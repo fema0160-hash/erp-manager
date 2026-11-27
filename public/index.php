@@ -279,17 +279,15 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                     $reference = trim((string) ($_POST['reference'] ?? ''));
                     $object = trim((string) ($_POST['object'] ?? ''));
                     $companyId = (int) ($_POST['company_id'] ?? 0);
-                    $status = (string) ($_POST['status'] ?? 'en_attente');
-                    $phase = (int) ($_POST['phase'] ?? 1);
+                    // Tout nouveau marché commence obligatoirement à la première étape du cycle.
+                    $status = 'en_attente';
+                    $phase = 1;
                     $amountRaw = str_replace(',', '.', trim((string) ($_POST['amount'] ?? '0')));
                     $marketDate = (string) ($_POST['market_date'] ?? '');
                     $validDate = DateTime::createFromFormat('Y-m-d', $marketDate);
-                    $validStatuses = ['en_cours', 'cloture', 'gagne', 'perdu_annule', 'en_attente'];
-
                     if ($reference === '' || strlen($reference) > 40 || $object === '' || strlen($object) > 10000
                         || !in_array($companyId, $allowedCompanyIds, true)
                         || !$auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'markets.create')
-                        || !in_array($status, $validStatuses, true) || $phase < 1 || $phase > 6
                         || !is_numeric($amountRaw) || (float) $amountRaw < 0 || !preg_match('/^\d{1,13}(\.\d{1,2})?$/', $amountRaw)
                         || !$validDate || $validDate->format('Y-m-d') !== $marketDate) {
                         $errorMessage = 'Vérifiez les champs obligatoires et les valeurs saisies.';
