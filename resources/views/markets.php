@@ -21,29 +21,7 @@ $selectedCompany = (int) ($_GET['company'] ?? 0);
 $searchTerm = (string) ($_GET['q'] ?? '');
 $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $market['amount'], $markets));
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title><?= $h($pageTitle) ?> | ERP Manager</title>
-  <link rel="stylesheet" href="assets/css/app.css">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="bg-[#0f294a] text-white px-4 sm:px-6 py-4 flex flex-wrap items-center justify-between gap-3">
-    <div class="flex items-center gap-3">
-      <img src="assets/images/erp-manager-mark.svg" alt="ERP Manager" class="w-10 h-10 rounded-xl">
-      <div><p class="text-xs text-blue-200">ERP Manager · Module opérationnel</p><h1 class="text-xl font-bold"><?= $h($pageTitle) ?></h1></div>
-    </div>
-    <div class="flex items-center gap-2">
-      <a href="?" class="rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm font-semibold">Tableau de bord</a>
-      <span class="text-sm text-blue-100"><?= $h($currentUser['display_name'] ?? '') ?></span>
-      <form method="post" action="?page=logout"><input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><button class="rounded-lg bg-white text-[#0f294a] px-3 py-2 text-sm font-bold">Déconnexion</button></form>
-    </div>
-  </header>
-
+<?php require __DIR__ . '/partials/app-layout-start.php'; ?>
   <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-5">
     <?php if ($successMessage !== ''): ?><div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm font-semibold"><?= $h($successMessage) ?></div><?php endif; ?>
     <?php if ($errorMessage !== ''): ?><div role="alert" class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm"><?= $h($errorMessage) ?></div><?php endif; ?>
@@ -106,7 +84,7 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
         <div class="border-t border-slate-200 bg-slate-50/70 px-4 py-3 flex flex-wrap justify-between gap-2 text-xs text-slate-600"><span><?= count($markets) ?> marché(s) affiché(s)</span><span class="font-bold text-[#0f294a]">Total filtré : <?= number_format($totalAmount, 2, ',', ' ') ?> MAD</span></div>
       </section>
     <?php endif; ?>
-  </main>
+</main>
 
 <script>
 (() => {
@@ -117,5 +95,4 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
   });
 })();
 </script>
-</body>
-</html>
+<?php require __DIR__ . '/partials/app-layout-end.php'; ?>
