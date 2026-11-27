@@ -8,12 +8,13 @@ declare(strict_types=1);
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Connexion | ERP Manager</title>
   <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen flex items-center justify-center bg-slate-100 p-4">
   <main class="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-xl p-7">
     <div class="flex items-center gap-3 mb-7">
-      <div class="w-12 h-12 rounded-xl bg-[#0f294a] text-white font-extrabold flex items-center justify-center">ERP</div>
+      <img src="assets/images/erp-manager-mark.svg" alt="ERP Manager" class="w-12 h-12 rounded-xl shadow-sm">
       <div><h1 class="text-xl font-bold text-slate-900">ERP Manager</h1><p class="text-sm text-slate-500">Espace de connexion</p></div>
     </div>
     <?php if (!empty($errorMessage)): ?>
