@@ -235,6 +235,13 @@
     </div>
   </div>
 
+  <script>
+    window.ERP_DASHBOARD_DATA = <?= json_encode(
+      $dashboardData ?? ['companies' => [], 'markets' => []],
+      JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT
+    ) ?>;
+    window.ERP_DATABASE_ERROR = <?= !empty($databaseError) ? 'true' : 'false' ?>;
+  </script>
   <script src="assets/js/dashboard.js"></script>
 </body>
 </html>
