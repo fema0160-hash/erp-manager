@@ -74,9 +74,9 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
         <form method="get" action="" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 items-end">
           <input type="hidden" name="page" value="marches">
           <label class="text-sm font-semibold text-slate-700 xl:col-span-2">Recherche<input type="search" name="q" value="<?= $h($searchTerm) ?>" placeholder="N° marché, objet ou entreprise..." class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"></label>
-          <label class="text-sm font-semibold text-slate-700">Entreprise<select name="company" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="0">Toutes les entreprises accessibles</option><?php foreach ($companies as $company): ?><option value="<?= (int) $company['id'] ?>" <?= $selectedCompany === (int) $company['id'] ? 'selected' : '' ?>><?= $h($company['name']) ?></option><?php endforeach; ?></select></label>
-          <label class="text-sm font-semibold text-slate-700">Statut<select name="status" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="">Tous les statuts</option><?php foreach ($statusLabels as $value => $label): ?><option value="<?= $h($value) ?>" <?= $selectedStatus === $value ? 'selected' : '' ?>><?= $h($label) ?></option><?php endforeach; ?></select></label>
-          <div class="sm:col-span-2 xl:col-span-4 flex flex-wrap items-center justify-between gap-2 pt-1"><a href="?page=marches" class="text-sm font-semibold text-slate-600 hover:text-[#0f294a]">Réinitialiser les filtres</a><div class="flex gap-2"><button type="submit" class="rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 px-4 py-2 text-sm font-semibold">Filtrer</button><?php if ($canCreateMarket): ?><a href="?page=marche_nouveau" class="rounded-lg bg-[#0f294a] hover:bg-[#163a68] text-white px-4 py-2 text-sm font-bold">+ Nouveau marché</a><?php endif; ?></div></div>
+          <label class="text-sm font-semibold text-slate-700">Entreprise<select name="company" data-auto-filter class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="0">Toutes les entreprises accessibles</option><?php foreach ($companies as $company): ?><option value="<?= (int) $company['id'] ?>" <?= $selectedCompany === (int) $company['id'] ? 'selected' : '' ?>><?= $h($company['name']) ?></option><?php endforeach; ?></select></label>
+          <label class="text-sm font-semibold text-slate-700">Statut<select name="status" data-auto-filter class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><option value="">Tous les statuts</option><?php foreach ($statusLabels as $value => $label): ?><option value="<?= $h($value) ?>" <?= $selectedStatus === $value ? 'selected' : '' ?>><?= $h($label) ?></option><?php endforeach; ?></select></label>
+          <div class="sm:col-span-2 xl:col-span-4 flex flex-wrap items-center justify-between gap-2 pt-1"><a href="?page=marches" class="text-sm font-semibold text-slate-600 hover:text-[#0f294a]">Réinitialiser les filtres</a><div class="flex gap-2"><?php if ($canCreateMarket): ?><a href="?page=marche_nouveau" class="rounded-lg bg-[#0f294a] hover:bg-[#163a68] text-white px-4 py-2 text-sm font-bold">+ Nouveau marché</a><?php endif; ?></div></div>
         </form>
       </section>
 
@@ -103,5 +103,15 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
       </section>
     <?php endif; ?>
   </main>
+
+<script>
+(() => {
+  const form = document.querySelector('form[action=""]');
+  if (!form) return;
+  form.querySelectorAll('[data-auto-filter]').forEach((select) => {
+    select.addEventListener('change', () => form.requestSubmit());
+  });
+})();
+</script>
 </body>
 </html>
