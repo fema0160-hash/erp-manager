@@ -5,7 +5,8 @@
 -- 1) Pré-requis : migrations 001 et 002 déjà installées.
 -- 2) Préparer une sauvegarde complète de la base avant exécution.
 -- 3) Cette migration est à exécuter UNE SEULE FOIS, après validation.
--- 4) Cible : MySQL 8.0.16+ (contraintes CHECK réellement appliquées).
+-- 4) Cibles : MySQL 8.0.16+ ou MariaDB 10.2.1+ (contraintes CHECK appliquées).
+--    Version relevée sur l'environnement XAMPP : MariaDB 10.4.32.
 -- 5) Cette migration n'est PAS exécutée automatiquement par l'application.
 --
 -- STRATÉGIE DE COMPATIBILITÉ :
