@@ -4,7 +4,7 @@ $h = static fn ($value): string => htmlspecialchars((string) $value, ENT_QUOTES,
 $csrf = $auth->csrfToken();
 $eligibleUsers = array_values(array_filter($users, static fn (array $user): bool => $user['role'] !== 'GEST'));
 ?>
-<?php require __DIR__ . '/partials/app-layout-start.php'; ?>
+<?php $pageTitle = 'Utilisateurs et droits'; require __DIR__ . '/partials/app-layout-start.php'; ?>
     <?php if ($successMessage !== ''): ?><div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm font-semibold"><?= $h($successMessage) ?></div><?php endif; ?>
     <?php if ($errorMessage !== ''): ?><div role="alert" class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm"><?= $h($errorMessage) ?></div><?php endif; ?>
 
