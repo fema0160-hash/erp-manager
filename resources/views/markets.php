@@ -22,7 +22,6 @@ $searchTerm = (string) ($_GET['q'] ?? '');
 $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $market['amount'], $markets));
 ?>
 <?php require __DIR__ . '/partials/app-layout-start.php'; ?>
-  <main class="max-w-7xl mx-auto p-4 sm:p-6 space-y-5">
     <?php if ($successMessage !== ''): ?><div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm font-semibold"><?= $h($successMessage) ?></div><?php endif; ?>
     <?php if ($errorMessage !== ''): ?><div role="alert" class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm"><?= $h($errorMessage) ?></div><?php endif; ?>
 
@@ -84,7 +83,6 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
         <div class="border-t border-slate-200 bg-slate-50/70 px-4 py-3 flex flex-wrap justify-between gap-2 text-xs text-slate-600"><span><?= count($markets) ?> marché(s) affiché(s)</span><span class="font-bold text-[#0f294a]">Total filtré : <?= number_format($totalAmount, 2, ',', ' ') ?> MAD</span></div>
       </section>
     <?php endif; ?>
-</main>
 
 <script>
 (() => {
