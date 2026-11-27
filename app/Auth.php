@@ -31,7 +31,7 @@ final class Auth
         return (string) $_SESSION['csrf_token'];
     }
 
-    public function verifyCsrf(?string $token): bool
+    public function verifyCsrf(mixed $token): bool
     {
         return is_string($token) && isset($_SESSION['csrf_token'])
             && hash_equals((string) $_SESSION['csrf_token'], $token);
