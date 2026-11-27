@@ -82,7 +82,7 @@ Les libellés historiques ont été confirmés :
 | 2 | Montage dossier | 3 — Préparation de la soumission |
 | 3 | Chiffrage & offre | 2 — Étude et BPU |
 | 4 | Dépôt & soutenance | 4 — Soumis |
-| 5 | Attribution / Verdict | 5 — Attente du résultat, ou 6 si attribué |
+| 5 | Attribution / Verdict | 5 — Attente du résultat ; passage en phase 6 après confirmation de l'attribution par GEST |
 | 6 | Clôture & historique | 8 — Clôturé / archivé |
 
 L'ancienne phase 6 est toujours convertie en statut clôturé et nouvelle phase 8, indépendamment de l'ancien statut, car son libellé historique est « Clôture & historique ». Un ancien statut `cloture` est également normalisé en phase 8. L'ancien statut `gagne` n'est pas suffisant pour conclure automatiquement à une attribution complète : le dossier est placé temporairement en `a_qualifier`, phase 5, jusqu'à ce que GEST confirme la date de décision et le montant attribué. Les anciennes valeurs de statut et de phase restent conservées dans l'historique de migration.
