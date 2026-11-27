@@ -22,7 +22,7 @@ try {
 $page = (string) ($_GET['page'] ?? 'dashboard');
 $isPost = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST';
 
-if ($databaseUnavailable || !$auth instanceof Auth) {
+if ($databaseUnavailable || !($auth instanceof Auth)) {
     require dirname(__DIR__) . '/resources/views/login.php';
     exit;
 }
@@ -120,13 +120,18 @@ try {
         ];
     }
 
-    if ($allowedCompanyIds && $auth->hasPermission(
-        (int) $currentUser['id'],
-        (string) $currentUser['role'],
-        $allowedCompanyIds[0],
-        'markets.view'
-    )) {
-        $placeholders = implode(',', array_fill(0, count($allowedCompanyIds), '?'));
+    $marketCompanyIds = array_values(array_filter(
+        $allowedCompanyIds,
+        fn (int $companyId): bool => $auth->hasPermission(
+            (int) $currentUser['id'],
+            (string) $currentUser['role'],
+            $companyId,
+            'markets.view'
+        )
+    ));
+
+    if ($marketCompanyIds) {
+        $placeholders = implode(',', array_fill(0, count($marketCompanyIds), '?'));
         $marketQuery = $pdo->prepare(
             'SELECT m.reference, m.object, m.company_id, c.code AS company_code,
                     m.status, m.phase, m.amount, m.market_date, m.is_demo
@@ -135,7 +140,7 @@ try {
              WHERE m.company_id IN (' . $placeholders . ')
              ORDER BY m.market_date DESC, m.id DESC'
         );
-        $marketQuery->execute($allowedCompanyIds);
+        $marketQuery->execute($marketCompanyIds);
         $marketRows = $marketQuery->fetchAll();
 
         foreach ($marketRows as $market) {
