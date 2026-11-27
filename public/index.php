@@ -26,6 +26,9 @@ try {
     )->fetchAll();
 
     foreach ($companyRows as $company) {
+        if (!preg_match('/^[A-Z0-9_]{1,50}$/', (string) $company['code'])) {
+            continue;
+        }
         $dashboardData['companies'][] = [
             'id' => (string) $company['code'],
             'name' => (string) $company['name'],
