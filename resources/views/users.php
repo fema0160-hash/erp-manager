@@ -4,24 +4,7 @@ $h = static fn ($value): string => htmlspecialchars((string) $value, ENT_QUOTES,
 $csrf = $auth->csrfToken();
 $eligibleUsers = array_values(array_filter($users, static fn (array $user): bool => $user['role'] !== 'GEST'));
 ?>
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Utilisateurs et droits | ERP Manager</title>
-  <link rel="stylesheet" href="assets/css/app.css">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg">
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="bg-[#0f294a] text-white px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
-    <div><p class="text-xs text-blue-200">ERP Manager · Administration générale</p><h1 class="text-xl font-bold">Utilisateurs et droits d’accès</h1></div>
-    <div class="flex items-center gap-2">
-      <a href="?" class="rounded-lg bg-white/10 hover:bg-white/20 px-3 py-2 text-sm font-semibold">Tableau de bord</a>
-      <form method="post" action="?page=logout"><input type="hidden" name="csrf_token" value="<?= $h($csrf) ?>"><button class="rounded-lg bg-white text-[#0f294a] px-3 py-2 text-sm font-bold">Déconnexion</button></form>
-    </div>
-  </header>
+<?php require __DIR__ . '/partials/app-layout-start.php'; ?>
   <main class="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
     <?php if ($successMessage !== ''): ?><div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm font-semibold"><?= $h($successMessage) ?></div><?php endif; ?>
     <?php if ($errorMessage !== ''): ?><div role="alert" class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm"><?= $h($errorMessage) ?></div><?php endif; ?>
@@ -92,6 +75,5 @@ $eligibleUsers = array_values(array_filter($users, static fn (array $user): bool
         <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-2 text-left">Utilisateur</th><th class="p-2 text-left">Entreprise</th><th class="p-2 text-left">Fonction retirée</th></tr></thead><tbody><?php foreach ($permissionRestrictions as $restriction): ?><tr class="border-t border-slate-100"><td class="p-2"><?= $h($restriction['username']) ?></td><td class="p-2"><?= $h($restriction['company_name']) ?></td><td class="p-2"><?= $h($restriction['permission_label']) ?></td></tr><?php endforeach; ?></tbody></table></div>
       <?php endif; ?>
     </section>
-  </main>
-</body>
-</html>
+</main>
+<?php require __DIR__ . '/partials/app-layout-end.php'; ?>
