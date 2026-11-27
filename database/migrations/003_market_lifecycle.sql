@@ -69,11 +69,14 @@ CREATE TABLE market_transitions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Conversion prudente des anciennes valeurs.
--- Ancienne phase 2 (Publication) -> nouvelle phase 3 (Préparation soumission).
--- Ancienne phase 3 (Pour étude) -> nouvelle phase 2 (Étude et BPU).
--- Les phases 4 et 5 gardent leur correspondance fonctionnelle.
--- Une ancienne phase 6 n'est interprétée comme clôturée que si l'ancien
--- statut était déjà "cloture". Les autres cas ambigus sont à qualifier.
+-- Correspondance confirmée avec les libellés historiques :
+-- Ancienne phase 1 (Repérage & DCE) -> nouvelle phase 1 (Préparation).
+-- Ancienne phase 2 (Montage dossier) -> nouvelle phase 3 (Préparation soumission).
+-- Ancienne phase 3 (Chiffrage & offre) -> nouvelle phase 2 (Étude et BPU).
+-- Ancienne phase 4 (Dépôt & soutenance) -> nouvelle phase 4 (Soumis).
+-- Ancienne phase 5 (Attribution / Verdict) -> phase 5, ou phase 6 si attribué.
+-- Ancienne phase 6 (Clôture & historique) -> nouvelle phase 8, quel que soit
+-- l'ancien statut. Les valeurs historiques restent conservées pour audit.
 
 UPDATE markets
 SET
@@ -86,6 +89,7 @@ SET
         ELSE 'a_qualifier'
     END,
     lifecycle_phase = CASE
+        WHEN phase = 6 THEN 8
         WHEN status = 'cloture' THEN 8
         WHEN status = 'gagne' THEN 6
         WHEN phase = 1 THEN 1
