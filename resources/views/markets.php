@@ -2,15 +2,15 @@
 declare(strict_types=1);
 $h = static fn ($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $statusLabels = [
+    'en_attente' => 'En préparation',
     'en_cours' => 'En cours',
-    'cloture' => 'Clôturé',
-    'gagne' => 'Gagné',
+    'gagne' => 'Attribué',
     'perdu_annule' => 'Perdu / annulé',
-    'en_attente' => 'En attente',
+    'cloture' => 'Clôturé',
 ];
 $phaseLabels = [
-    1 => 'Étape initiale',
-    2 => 'Préparation',
+    1 => 'Préparation',
+    2 => 'Publication',
     3 => 'Pour étude',
     4 => 'Présentation',
     5 => 'Résultat',
@@ -58,8 +58,12 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
           <label class="text-sm font-semibold text-slate-700 sm:col-span-2">Objet du marché *<textarea name="object" required rows="3" maxlength="10000" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal" placeholder="Description de l'objet du marché"></textarea></label>
           <label class="text-sm font-semibold text-slate-700">Date du marché *<input type="date" name="market_date" required value="<?= $h(date('Y-m-d')) ?>" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"></label>
           <label class="text-sm font-semibold text-slate-700">Montant estimatif (MAD) *<input type="number" name="amount" required min="0" max="9999999999999.99" step="0.01" value="0.00" class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"></label>
-          <label class="text-sm font-semibold text-slate-700">Phase *<select name="phase" required class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><?php foreach ($phaseLabels as $number => $label): ?><option value="<?= $number ?>"><?= $number ?> — <?= $h($label) ?></option><?php endforeach; ?></select></label>
-          <label class="text-sm font-semibold text-slate-700">Statut *<select name="status" required class="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 font-normal"><?php foreach ($statusLabels as $value => $label): ?><option value="<?= $h($value) ?>"><?= $h($label) ?></option><?php endforeach; ?></select></label>
+          <div class="sm:col-span-2 rounded-xl border border-blue-200 bg-blue-50 p-4">
+            <p class="text-xs font-bold uppercase tracking-wide text-blue-800">Cycle de vie du marché</p>
+            <p class="mt-2 text-sm font-semibold text-slate-800">Phase initiale : 1 — Préparation</p>
+            <p class="mt-1 text-sm text-slate-600">Statut initial : En préparation</p>
+            <p class="mt-2 text-xs text-slate-500">La phase et le statut sont attribués automatiquement. Ils évolueront selon les étapes du traitement du marché.</p>
+          </div>
           <div class="sm:col-span-2 flex flex-wrap justify-end gap-2 pt-2"><a href="?page=marches" class="rounded-lg border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700">Annuler</a><button type="submit" class="rounded-lg bg-[#0f294a] hover:bg-[#163a68] text-white px-5 py-2.5 text-sm font-bold">Enregistrer le marché</button></div>
         </form>
       </section>
