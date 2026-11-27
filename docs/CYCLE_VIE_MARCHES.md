@@ -72,13 +72,28 @@ Les dossiers PERDU, ANNULE, INFRUCTUEUX et CLOTURE restent visibles en consultat
 
 Les contrôles d'accès aux marchés et à leurs sociétés restent appliqués à chaque lecture et à chaque action.
 
-## 7. Compatibilité avec la base actuelle
+## 7. Correspondance avec les anciennes phases
+
+Les libellés historiques ont été confirmés :
+
+| Ancienne phase | Signification | Nouvelle phase |
+|---:|---|---:|
+| 1 | Repérage & DCE | 1 — Préparation |
+| 2 | Montage dossier | 3 — Préparation de la soumission |
+| 3 | Chiffrage & offre | 2 — Étude et BPU |
+| 4 | Dépôt & soutenance | 4 — Soumis |
+| 5 | Attribution / Verdict | 5 — Attente du résultat, ou 6 si attribué |
+| 6 | Clôture & historique | 8 — Clôturé / archivé |
+
+L'ancienne phase 6 est toujours convertie en nouvelle phase 8, indépendamment de l'ancien statut. Les anciennes valeurs de statut et de phase doivent rester conservées dans l'historique de migration.
+
+## 8. Compatibilité avec la base actuelle
 
 La migration actuelle définit seulement cinq statuts (en_cours, cloture, gagne, perdu_annule, en_attente) et limite les phases à 1–6. Elle ne permet pas de distinguer séparément PERDU, ANNULE et INFRUCTUEUX, ni d'enregistrer un historique détaillé des transitions.
 
 **Aucune modification SQL n'est effectuée par ce document.** Avant le développement des transitions, une migration devra être préparée et présentée séparément pour validation explicite. Elle devra notamment prévoir les statuts séparés, les phases harmonisées, les données obligatoires des décisions et une table d'historique. Les données existantes devront être converties sans perte.
 
-## 8. Critères de validation avant mise en production
+## 9. Critères de validation avant mise en production
 
 - Les phases et statuts affichés sont cohérents dans les listes, fiches et tableaux de bord.
 - Chaque transition est contrôlée côté serveur et soumise aux permissions.
