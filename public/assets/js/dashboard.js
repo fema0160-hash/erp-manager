@@ -225,7 +225,7 @@ function renderCompanySelectors() {
         <span class="text-[11px] opacity-80 font-medium">${count}</span>
       </button>
     `;
-    selectHtml += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${index + 1}. ${c.name}</option>`;
+    selectHtml += `<option value="${c.id}" ${isSelected ? 'selected' : ''}>${index + 1}. ${escapeHtml(c.name)}</option>`;
   });
 
   listEl.innerHTML = listHtml;
