@@ -74,13 +74,13 @@ Les phases historiques 2 et 3 sont réordonnées pour correspondre au nouveau cy
 ## 5. Contrôles techniques et prérequis
 
 Avant toute exécution :
-1. Confirmer la version exacte de MySQL ou MariaDB utilisée par XAMPP.
+1. Version confirmée sur XAMPP : MariaDB 10.4.32.
 2. Confirmer que les migrations 001 et 002 sont installées.
 3. Faire une sauvegarde complète de `erp_manager`.
 4. Compter les marchés et examiner les statuts/phases existants.
 5. Vérifier les dossiers qui seront classés `a_qualifier`.
 
-Le script est conçu pour MySQL 8.0.16 ou supérieur, avec application effective des contraintes CHECK. La syntaxe et le comportement doivent être confirmés sur la version MariaDB éventuellement fournie par XAMPP avant toute exécution.
+Le script cible MySQL 8.0.16 ou supérieur et MariaDB 10.2.1 ou supérieur, versions qui appliquent les contraintes CHECK. La version relevée sur l'environnement XAMPP est MariaDB 10.4.32 : les types des clés étrangères correspondent aux tables 001/002 et les constructions SQL utilisées sont compatibles avec cette famille de versions. La migration n'a toutefois pas été exécutée sur cette base ; une sauvegarde et les contrôles de données restent obligatoires.
 
 Le script est à exécuter une seule fois. Les instructions DDL peuvent provoquer des validations implicites ; il ne faut donc pas supposer que l'ensemble du fichier est annulable par un simple ROLLBACK.
 
