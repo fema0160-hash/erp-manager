@@ -21,7 +21,8 @@ Une décision (gagné, perdu, annulé ou infructueux) ne doit donc pas être uti
 | 4 | Soumis | Dépôt de l'offre et enregistrement de la date et des références de dépôt |
 | 5 | Attente du résultat | Suivi de la séance et attente de la décision officielle |
 | 6 | Préparation du marché attribué | Après attribution : préparation du dossier d'exécution, garanties et éléments nécessaires au démarrage |
-| 7 | Clôturé / archivé | Dossier terminé, conservé en consultation et dans l'historique |
+| 7 | Exécution / suivi du chantier | Suivi opérationnel du marché attribué et de ses obligations |
+| 8 | Clôturé / archivé | Dossier terminé, conservé en consultation et dans l'historique |
 
 La phase 6 n'est accessible qu'après une décision d'attribution. Les marchés perdus, annulés ou infructueux ne passent pas en phase 6.
 
@@ -46,7 +47,8 @@ Le résultat ATTRIBUE est conservé pendant la préparation du marché attribué
 - Phase 4 → phase 5
 - Depuis la phase 5 : décision ATTRIBUE, PERDU, ANNULE ou INFRUCTUEUX.
 - ATTRIBUE : phase 5 → phase 6.
-- Phase 6 → phase 7 après vérification des éléments de clôture.
+- Phase 6 → phase 7 lorsque les conditions de démarrage sont réunies.
+- Phase 7 → phase 8 après vérification des éléments de clôture.
 - PERDU, ANNULE et INFRUCTUEUX : aucune transition ordinaire supplémentaire.
 - Réouverture exceptionnelle : GEST uniquement, avec motif obligatoire et conservation de l'historique.
 
