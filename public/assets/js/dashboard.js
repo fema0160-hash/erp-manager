@@ -136,7 +136,12 @@ function escapeHtml(value) {
 }
 
 function formatMAD(amount) {
-  return new Intl.NumberFormat('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' MAD';
+  const formatted = new Intl.NumberFormat('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+    useGrouping: true
+  }).format(Number(amount) || 0).replace(/[\u00A0\u202F]/g, ' ');
+  return formatted + ' MAD';
 }
 
 function getCompanyById(id) {
