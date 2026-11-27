@@ -118,11 +118,15 @@
             </div>
             <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition" title="Aperçu impression / PDF"><span>Imprimer / PDF</span></button>
             <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
-              <div class="w-8 h-8 rounded-full bg-[#0f294a] text-white text-xs font-bold flex items-center justify-center">SA</div>
+              <div class="w-8 h-8 rounded-full bg-[#0f294a] text-white text-xs font-bold flex items-center justify-center"><?= htmlspecialchars(strtoupper(substr((string) ($currentUser['username'] ?? 'U'), 0, 2)), ENT_QUOTES, 'UTF-8') ?></div>
               <div class="hidden sm:block text-left leading-tight">
-                <div class="text-xs font-semibold text-slate-800">admin</div>
-                <div class="text-[10px] text-slate-500">Super Admin</div>
+                <div class="text-xs font-semibold text-slate-800"><?= htmlspecialchars((string) ($currentUser['display_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></div>
+                <div class="text-[10px] text-slate-500"><?= htmlspecialchars((string) ($currentUser['role'] ?? ''), ENT_QUOTES, 'UTF-8') ?></div>
               </div>
+              <form method="post" action="?page=logout" class="ml-1">
+                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($auth->csrfToken(), ENT_QUOTES, 'UTF-8') ?>">
+                <button type="submit" class="text-xs font-semibold text-slate-600 hover:text-red-700 border border-slate-200 rounded-lg px-2.5 py-2">Déconnexion</button>
+              </form>
             </div>
           </div>
         </div>
@@ -137,6 +141,13 @@
       </header>
 
       <main id="mainContent" class="flex-1 p-4 sm:p-5 space-y-4 max-w-[1600px] w-full mx-auto">
+
+        <?php if (!empty($currentUser['must_change_password'])): ?>
+          <div class="rounded-xl bg-red-600 text-white px-4 py-3 shadow-sm flex items-center gap-3 whitespace-nowrap overflow-x-auto no-print" role="alert">
+            <span class="text-sm font-semibold">Votre mot de passe initial est toujours actif. Changez-le dès que possible.</span>
+            <a href="?page=mon_mot_de_passe" class="inline-flex items-center justify-center shrink-0 rounded-lg bg-white text-red-700 hover:bg-red-50 px-3 py-2 text-xs font-bold shadow-sm">Changer mon mot de passe</a>
+          </div>
+        <?php endif; ?>
 
         <div id="alertBanner" class="rounded-2xl bg-amber-50 border border-amber-200/90 px-4 py-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 no-print">
           <div class="flex items-start sm:items-center gap-3">
