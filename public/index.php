@@ -239,6 +239,117 @@ if ($page === 'mon_mot_de_passe') {
     exit;
 }
 
+
+if ($page === 'marches' || $page === 'marche_nouveau') {
+    $currentUser = $auth->requireLogin();
+    $pageTitle = $page === 'marche_nouveau' ? 'Nouveau marché' : 'Gestion des marchés';
+    $companies = [];
+    $allowedCompanyIds = [];
+    $canCreateMarket = false;
+    $markets = [];
+    $successMessage = '';
+    $errorMessage = '';
+
+    try {
+        $companyRows = $pdo->query('SELECT id, name FROM companies ORDER BY name')->fetchAll();
+        foreach ($companyRows as $company) {
+            $companyId = (int) $company['id'];
+            if (!$auth->hasCompanyAccess((int) $currentUser['id'], (string) $currentUser['role'], $companyId)
+                || !$auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'markets.view')) {
+                continue;
+            }
+            $allowedCompanyIds[] = $companyId;
+            $companies[] = ['id' => $companyId, 'name' => (string) $company['name']];
+            if ($auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'markets.create')) {
+                $canCreateMarket = true;
+            }
+        }
+
+        if ($page === 'marche_nouveau') {
+            if (!$canCreateMarket) {
+                http_response_code(403);
+                echo 'Vous ne disposez pas du droit de créer un marché.';
+                exit;
+            }
+
+            if ($isPost) {
+                if (!$auth->verifyCsrf($_POST['csrf_token'] ?? null)) {
+                    $errorMessage = 'Votre session a expiré. Rechargez la page et réessayez.';
+                } else {
+                    $reference = trim((string) ($_POST['reference'] ?? ''));
+                    $object = trim((string) ($_POST['object'] ?? ''));
+                    $companyId = (int) ($_POST['company_id'] ?? 0);
+                    $status = (string) ($_POST['status'] ?? 'en_attente');
+                    $phase = (int) ($_POST['phase'] ?? 1);
+                    $amountRaw = str_replace(',', '.', trim((string) ($_POST['amount'] ?? '0')));
+                    $marketDate = (string) ($_POST['market_date'] ?? '');
+                    $validDate = DateTime::createFromFormat('Y-m-d', $marketDate);
+                    $validStatuses = ['en_cours', 'cloture', 'gagne', 'perdu_annule', 'en_attente'];
+
+                    if ($reference === '' || strlen($reference) > 40 || $object === '' || strlen($object) > 10000
+                        || !in_array($companyId, $allowedCompanyIds, true)
+                        || !$auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'markets.create')
+                        || !in_array($status, $validStatuses, true) || $phase < 1 || $phase > 6
+                        || !is_numeric($amountRaw) || (float) $amountRaw < 0 || !preg_match('/^\d{1,13}(\.\d{1,2})?$/', $amountRaw)
+                        || !$validDate || $validDate->format('Y-m-d') !== $marketDate) {
+                        $errorMessage = 'Vérifiez les champs obligatoires et les valeurs saisies.';
+                    } else {
+                        $insert = $pdo->prepare(
+                            'INSERT INTO markets (reference, object, company_id, status, phase, amount, market_date, is_demo)
+                             VALUES (:reference, :object, :company_id, :status, :phase, :amount, :market_date, 0)'
+                        );
+                        $insert->execute([
+                            'reference' => $reference, 'object' => $object, 'company_id' => $companyId,
+                            'status' => $status, 'phase' => $phase, 'amount' => $amountRaw, 'market_date' => $marketDate,
+                        ]);
+                        header('Location: ?page=marches&created=1');
+                        exit;
+                    }
+                }
+            }
+        } else {
+            $successMessage = isset($_GET['created']) ? 'Le marché a été ajouté avec succès.' : '';
+            if ($allowedCompanyIds) {
+                $where = ['m.company_id IN (' . implode(',', array_fill(0, count($allowedCompanyIds), '?')) . ')'];
+                $params = $allowedCompanyIds;
+                $search = trim((string) ($_GET['q'] ?? ''));
+                $statusFilter = (string) ($_GET['status'] ?? '');
+                $companyFilter = (int) ($_GET['company'] ?? 0);
+
+                if ($search !== '') {
+                    $where[] = '(m.reference LIKE ? OR m.object LIKE ? OR c.name LIKE ?)';
+                    $like = '%' . $search . '%';
+                    array_push($params, $like, $like, $like);
+                }
+                if (in_array($statusFilter, ['en_cours', 'cloture', 'gagne', 'perdu_annule', 'en_attente'], true)) {
+                    $where[] = 'm.status = ?';
+                    $params[] = $statusFilter;
+                }
+                if ($companyFilter > 0 && in_array($companyFilter, $allowedCompanyIds, true)) {
+                    $where[] = 'm.company_id = ?';
+                    $params[] = $companyFilter;
+                }
+
+                $sql = 'SELECT m.id, m.reference, m.object, m.company_id, c.name AS company_name,
+                               m.status, m.phase, m.amount, m.market_date, m.is_demo
+                        FROM markets m INNER JOIN companies c ON c.id = m.company_id
+                        WHERE ' . implode(' AND ', $where) . '
+                        ORDER BY m.market_date DESC, m.id DESC';
+                $query = $pdo->prepare($sql);
+                $query->execute($params);
+                $markets = $query->fetchAll();
+            }
+        }
+    } catch (PDOException $exception) {
+        error_log('ERP Manager - module marchés : ' . $exception->getMessage());
+        $errorMessage = 'Une erreur est survenue lors du chargement ou de l’enregistrement.';
+    }
+
+    $csrfToken = $auth->csrfToken();
+    require dirname(__DIR__) . '/resources/views/markets.php';
+    exit;
+}
+
 $currentUser = $auth->requireLogin();
 
 $pageTitle = 'Tableau de bord';
