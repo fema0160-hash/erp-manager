@@ -74,5 +74,4 @@ $eligibleUsers = array_values(array_filter($users, static fn (array $user): bool
         <div class="overflow-x-auto"><table class="w-full text-sm"><thead class="bg-slate-50"><tr><th class="p-2 text-left">Utilisateur</th><th class="p-2 text-left">Entreprise</th><th class="p-2 text-left">Fonction retirée</th></tr></thead><tbody><?php foreach ($permissionRestrictions as $restriction): ?><tr class="border-t border-slate-100"><td class="p-2"><?= $h($restriction['username']) ?></td><td class="p-2"><?= $h($restriction['company_name']) ?></td><td class="p-2"><?= $h($restriction['permission_label']) ?></td></tr><?php endforeach; ?></tbody></table></div>
       <?php endif; ?>
     </section>
-</main>
 <?php require __DIR__ . '/partials/app-layout-end.php'; ?>
