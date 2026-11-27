@@ -1,0 +1,18 @@
+# Configuration locale et secrets
+.env
+.env.*
+!.env.example
+/config/database.local.php
+
+# Fichiers temporaires et journaux
+/storage/logs/*
+!/storage/logs/.gitkeep
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# Dépendances et éditeurs
+/vendor/
+/.idea/
+/.vscode/
+.DS_Store
+Thumbs.db
