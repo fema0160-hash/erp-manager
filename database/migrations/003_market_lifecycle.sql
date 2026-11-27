@@ -74,24 +74,25 @@ CREATE TABLE market_transitions (
 -- Ancienne phase 2 (Montage dossier) -> nouvelle phase 3 (Préparation soumission).
 -- Ancienne phase 3 (Chiffrage & offre) -> nouvelle phase 2 (Étude et BPU).
 -- Ancienne phase 4 (Dépôt & soutenance) -> nouvelle phase 4 (Soumis).
--- Ancienne phase 5 (Attribution / Verdict) -> phase 5, ou phase 6 si attribué.
--- Ancienne phase 6 (Clôture & historique) -> nouvelle phase 8, quel que soit
--- l'ancien statut. Les valeurs historiques restent conservées pour audit.
+-- Ancienne phase 5 (Attribution / Verdict) -> nouvelle phase 5.
+-- L'ancien statut "gagne" ne suffit pas à prouver la date et le montant
+-- attribué : il est classé "a_qualifier" en phase 5.
+-- Ancienne phase 6 (Clôture & historique) -> statut cloture et nouvelle
+-- phase 8, quel que soit l'ancien statut. Les valeurs sources sont conservées.
 
 UPDATE markets
 SET
     lifecycle_status = CASE
-        WHEN status IN ('en_attente', 'en_cours') AND phase = 6 THEN 'a_qualifier'
-        WHEN status IN ('en_attente', 'en_cours') THEN 'en_cours'
-        WHEN status = 'gagne' THEN 'attribue'
+        WHEN phase = 6 THEN 'cloture'
         WHEN status = 'cloture' THEN 'cloture'
+        WHEN status = 'gagne' THEN 'a_qualifier'
+        WHEN status IN ('en_attente', 'en_cours') THEN 'en_cours'
         WHEN status = 'perdu_annule' THEN 'a_qualifier'
         ELSE 'a_qualifier'
     END,
     lifecycle_phase = CASE
         WHEN phase = 6 THEN 8
         WHEN status = 'cloture' THEN 8
-        WHEN status = 'gagne' THEN 6
         WHEN phase = 1 THEN 1
         WHEN phase = 2 THEN 3
         WHEN phase = 3 THEN 2
@@ -140,10 +141,12 @@ SELECT
     phase,
     NULL,
     CASE
+        WHEN phase = 6
+            THEN 'Ancienne phase 6 « Clôture & historique » : conversion en statut clôturé et phase 8, conformément au libellé historique confirmé.'
+        WHEN status = 'gagne'
+            THEN 'À qualifier par GEST : l’ancien statut gagné ne fournit pas à lui seul la date de décision et le montant attribué obligatoires.'
         WHEN status = 'perdu_annule'
             THEN 'À qualifier par GEST : l’ancien statut ne distingue pas perdu, annulé et infructueux.'
-        WHEN status IN ('en_attente', 'en_cours') AND phase = 6
-            THEN 'À qualifier par GEST : ancien statut en cours/en attente associé à l’ancienne phase archivée.'
         WHEN status = 'cloture' AND phase <> 6
             THEN 'Ancien statut clôturé : phase normalisée à 8 ; vérifier la cohérence du dossier.'
         ELSE 'Initialisation du cycle de vie ; valeurs historiques conservées dans legacy_status et legacy_phase.'
