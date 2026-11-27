@@ -301,6 +301,10 @@ function resetAllFilters() {
 
 function handleNavClick(navId) {
   toggleMobileSidebar(false);
+  if (navId === 'marches') {
+    window.location.href = '?page=marches';
+    return;
+  }
   if (navId !== 'dashboard') {
     const banner = document.getElementById('alertBanner');
     banner.classList.add('ring-2', 'ring-[#ea9a10]');
