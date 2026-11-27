@@ -105,6 +105,9 @@ try {
         if (!$auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'dashboard.view')) {
             continue;
         }
+        if (!$auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'companies.view')) {
+            continue;
+        }
         if (!preg_match('/^[A-Z0-9_]{1,50}$/', (string) $company['code'])) {
             continue;
         }
