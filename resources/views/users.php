@@ -11,6 +11,7 @@ $eligibleUsers = array_values(array_filter($users, static fn (array $user): bool
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Utilisateurs et droits | ERP Manager</title>
   <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
