@@ -67,9 +67,18 @@ La future application devra créer une ligne d'historique à chaque transition e
 
 L'ancien statut `perdu_annule` ne contient pas assez d'information pour déterminer s'il s'agit d'un marché perdu, annulé ou infructueux. Le script ne devine pas cette information : les dossiers concernés sont placés en `a_qualifier`.
 
-Les phases historiques 2 et 3 sont réordonnées pour correspondre au nouveau cycle : ancienne phase 2 « Publication » vers nouvelle phase 3 ; ancienne phase 3 « Pour étude » vers nouvelle phase 2. Les anciennes phases 4 et 5 restent respectivement 4 et 5. Les anciennes phases 6 associées à un statut en attente/en cours sont placées en `a_qualifier`, phase 5, car elles sont contradictoires.
+La correspondance des six anciennes phases a été confirmée par l'utilisateur :
 
-**Point de validation métier :** confirmer que cette correspondance des anciennes phases 2 et 3 reflète bien les dossiers réellement enregistrés. Les valeurs sources restent conservées pour permettre la vérification.
+| Ancienne phase | Signification historique confirmée | Conversion proposée |
+|---:|---|---|
+| 1 | Repérage & DCE | Nouvelle phase 1 — Préparation |
+| 2 | Montage dossier | Nouvelle phase 3 — Préparation de la soumission |
+| 3 | Chiffrage & offre | Nouvelle phase 2 — Étude et BPU |
+| 4 | Dépôt & soutenance | Nouvelle phase 4 — Soumis |
+| 5 | Attribution / Verdict | Nouvelle phase 5 — Attente du résultat ; phase 6 si le marché est attribué |
+| 6 | Clôture & historique | Nouvelle phase 8 — Clôturé / archivé, quel que soit l'ancien statut |
+
+Les anciennes phases 2 et 3 sont donc réordonnées selon leur signification réelle : le montage du dossier précède le chiffrage et l'offre dans le nouveau cycle retenu. L'ancienne phase 6 est convertie en phase 8 sans condition sur l'ancien statut. Pour les statuts historiques contradictoires ou insuffisamment précis, le statut normalisé peut rester `a_qualifier` ; les anciennes valeurs sont conservées dans l'historique de migration.
 
 ## 5. Contrôles techniques et prérequis
 
@@ -107,7 +116,6 @@ Le développement PHP devra ensuite appliquer côté serveur les transitions aut
 ## 8. Décision attendue
 
 Avant exécution, valider :
-- la correspondance des anciennes phases 2 et 3 ;
 - le traitement GEST des dossiers `a_qualifier` ;
 - les champs obligatoires pour les décisions perdu, annulé, infructueux et attribué ;
 - la compatibilité du script avec la version réelle de MySQL/MariaDB.
