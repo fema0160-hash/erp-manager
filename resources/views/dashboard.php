@@ -116,6 +116,9 @@
               <label for="topbarCompanySelect" class="sr-only">Filtrer par entreprise</label>
               <select id="topbarCompanySelect" onchange="selectCompany(this.value)" class="text-xs sm:text-sm font-medium bg-white border border-slate-300 hover:border-slate-400 rounded-xl px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#ea9a10]/50"></select>
             </div>
+            <?php if (($currentUser['role'] ?? '') === 'GEST'): ?>
+              <a href="?page=utilisateurs" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-[#0f294a] bg-[#0f294a] text-white hover:bg-[#163a68] transition">Utilisateurs & droits</a>
+            <?php endif; ?>
             <button type="button" onclick="window.print()" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition" title="Aperçu impression / PDF"><span>Imprimer / PDF</span></button>
             <div class="flex items-center gap-2 pl-2 border-l border-slate-200">
               <div class="w-8 h-8 rounded-full bg-[#0f294a] text-white text-xs font-bold flex items-center justify-center"><?= htmlspecialchars(strtoupper(substr((string) ($currentUser['username'] ?? 'U'), 0, 2)), ENT_QUOTES, 'UTF-8') ?></div>
