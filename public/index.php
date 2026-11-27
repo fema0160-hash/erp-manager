@@ -53,6 +53,162 @@ if ($page === 'logout') {
     exit;
 }
 
+if ($page === 'utilisateurs') {
+    $currentUser = $auth->requireLogin();
+    if (($currentUser['role'] ?? '') !== 'GEST') {
+        http_response_code(403);
+        echo 'Accès refusé. Cette page est réservée à l’administrateur général.';
+        exit;
+    }
+
+    $successMessage = '';
+    if (isset($_GET['success'])) {
+        $successMessage = 'Opération effectuée avec succès.';
+    }
+
+    if ($isPost) {
+        if (!$auth->verifyCsrf($_POST['csrf_token'] ?? null)) {
+            $errorMessage = 'Votre session a expiré. Rechargez la page et réessayez.';
+        } else {
+            $action = (string) ($_POST['action'] ?? '');
+            try {
+                if ($action === 'create_user') {
+                    $username = trim((string) ($_POST['username'] ?? ''));
+                    $displayName = trim((string) ($_POST['display_name'] ?? ''));
+                    $role = (string) ($_POST['role'] ?? '');
+                    if (!preg_match('/^[a-zA-Z0-9._-]{3,80}$/', $username) || $displayName === ''
+                        || !in_array($role, ['SECR', 'CHAD'], true)) {
+                        throw new InvalidArgumentException('Vérifiez l’identifiant, le nom et le rôle du nouvel utilisateur.');
+                    }
+                    $hash = password_hash('123', PASSWORD_DEFAULT);
+                    $q = $pdo->prepare(
+                        'INSERT INTO users (username, display_name, role, password_hash, must_change_password, is_active)
+                         VALUES (:username, :display_name, :role, :hash, 1, 1)'
+                    );
+                    $q->execute(['username' => $username, 'display_name' => $displayName, 'role' => $role, 'hash' => $hash]);
+                    header('Location: ?page=utilisateurs&success=1');
+                    exit;
+                }
+
+                if ($action === 'reset_password') {
+                    $targetId = (int) ($_POST['user_id'] ?? 0);
+                    $hash = password_hash('123', PASSWORD_DEFAULT);
+                    $q = $pdo->prepare(
+                        'UPDATE users SET password_hash = :hash, must_change_password = 1,
+                         password_changed_at = NULL, failed_login_attempts = 0, locked_until = NULL
+                         WHERE id = :id AND role <> \'GEST\''
+                    );
+                    $q->execute(['hash' => $hash, 'id' => $targetId]);
+                    header('Location: ?page=utilisateurs&success=1');
+                    exit;
+                }
+
+                if ($action === 'toggle_user') {
+                    $targetId = (int) ($_POST['user_id'] ?? 0);
+                    if ($targetId === (int) $currentUser['id']) {
+                        throw new InvalidArgumentException('Vous ne pouvez pas désactiver votre propre compte.');
+                    }
+                    $q = $pdo->prepare(
+                        'UPDATE users SET is_active = IF(is_active = 1, 0, 1)
+                         WHERE id = :id AND role <> \'GEST\''
+                    );
+                    $q->execute(['id' => $targetId]);
+                    header('Location: ?page=utilisateurs&success=1');
+                    exit;
+                }
+
+                if ($action === 'company_restriction') {
+                    $targetId = (int) ($_POST['user_id'] ?? 0);
+                    $companyId = (int) ($_POST['company_id'] ?? 0);
+                    $mode = (string) ($_POST['mode'] ?? '');
+                    $q = $pdo->prepare('SELECT role FROM users WHERE id = :id');
+                    $q->execute(['id' => $targetId]);
+                    $targetRole = $q->fetchColumn();
+                    if (!$targetRole || $targetRole === 'GEST' || !in_array($mode, ['block', 'allow'], true)) {
+                        throw new InvalidArgumentException('Sélection d’utilisateur ou d’entreprise invalide.');
+                    }
+                    if ($mode === 'block') {
+                        $q = $pdo->prepare(
+                            'INSERT IGNORE INTO user_company_restrictions (user_id, company_id, restricted_by)
+                             VALUES (:uid, :cid, :admin)'
+                        );
+                        $q->execute(['uid' => $targetId, 'cid' => $companyId, 'admin' => (int) $currentUser['id']]);
+                    } else {
+                        $q = $pdo->prepare('DELETE FROM user_company_restrictions WHERE user_id = :uid AND company_id = :cid');
+                        $q->execute(['uid' => $targetId, 'cid' => $companyId]);
+                    }
+                    header('Location: ?page=utilisateurs&success=1');
+                    exit;
+                }
+
+                if ($action === 'permission_restriction') {
+                    $targetId = (int) ($_POST['user_id'] ?? 0);
+                    $companyId = (int) ($_POST['company_id'] ?? 0);
+                    $permissionId = (int) ($_POST['permission_id'] ?? 0);
+                    $mode = (string) ($_POST['mode'] ?? '');
+                    $q = $pdo->prepare('SELECT role FROM users WHERE id = :id');
+                    $q->execute(['id' => $targetId]);
+                    $targetRole = $q->fetchColumn();
+                    if (!$targetRole || $targetRole === 'GEST' || !in_array($mode, ['block', 'allow'], true)) {
+                        throw new InvalidArgumentException('Sélection d’utilisateur ou de droit invalide.');
+                    }
+                    if ($mode === 'block') {
+                        $q = $pdo->prepare(
+                            'INSERT IGNORE INTO user_permission_restrictions
+                             (user_id, company_id, permission_id, restricted_by)
+                             VALUES (:uid, :cid, :pid, :admin)'
+                        );
+                        $q->execute([
+                            'uid' => $targetId, 'cid' => $companyId, 'pid' => $permissionId,
+                            'admin' => (int) $currentUser['id'],
+                        ]);
+                    } else {
+                        $q = $pdo->prepare(
+                            'DELETE FROM user_permission_restrictions
+                             WHERE user_id = :uid AND company_id = :cid AND permission_id = :pid'
+                        );
+                        $q->execute(['uid' => $targetId, 'cid' => $companyId, 'pid' => $permissionId]);
+                    }
+                    header('Location: ?page=utilisateurs&success=1');
+                    exit;
+                }
+
+                throw new InvalidArgumentException('Action non reconnue.');
+            } catch (InvalidArgumentException $exception) {
+                $errorMessage = $exception->getMessage();
+            } catch (PDOException $exception) {
+                error_log('ERP Manager - gestion utilisateurs : ' . $exception->getMessage());
+                $errorMessage = 'Impossible d’effectuer cette opération. Vérifiez que l’identifiant n’existe pas déjà et que les données sont valides.';
+            }
+        }
+    }
+
+    $users = $pdo->query(
+        'SELECT id, username, display_name, role, is_active, must_change_password
+         FROM users ORDER BY role, username'
+    )->fetchAll();
+    $companies = $pdo->query('SELECT id, name FROM companies ORDER BY name')->fetchAll();
+    $permissions = $pdo->query('SELECT id, code, label FROM permissions ORDER BY label')->fetchAll();
+    $companyRestrictions = $pdo->query(
+        'SELECT r.id, u.username, c.name AS company_name
+         FROM user_company_restrictions r
+         INNER JOIN users u ON u.id = r.user_id
+         INNER JOIN companies c ON c.id = r.company_id
+         ORDER BY u.username, c.name'
+    )->fetchAll();
+    $permissionRestrictions = $pdo->query(
+        'SELECT r.id, u.username, c.name AS company_name, p.label AS permission_label
+         FROM user_permission_restrictions r
+         INNER JOIN users u ON u.id = r.user_id
+         INNER JOIN companies c ON c.id = r.company_id
+         INNER JOIN permissions p ON p.id = r.permission_id
+         ORDER BY u.username, c.name, p.label'
+    )->fetchAll();
+
+    require dirname(__DIR__) . '/resources/views/users.php';
+    exit;
+}
+
 if ($page === 'mon_mot_de_passe') {
     $currentUser = $auth->requireLogin();
 
