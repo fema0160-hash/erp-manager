@@ -8,7 +8,8 @@ Application web PHP/MySQL de gestion des marchés, en français, conçue pour é
 - Authentification et déconnexion sécurisées.
 - Rôles initiaux : GEST, SECR et CHAD.
 - Changement du mot de passe initial depuis l'application.
-- Accès à toutes les entreprises et droits fonctionnels accordés par défaut ; les restrictions sont prévues par entreprise et par fonction.
+- Écran GEST « Utilisateurs & droits » : création de comptes SECR/CHAD, activation/désactivation, réinitialisation et restrictions par entreprise/fonction.
+- Accès à toutes les entreprises et droits fonctionnels accordés par défaut ; les restrictions sont facultatives et configurées par GEST.
 - Les marchés et entreprises du tableau de bord sont des données de démonstration.
 
 ## Installation locale (XAMPP)
@@ -38,4 +39,4 @@ Ne jamais publier `config/database.local.php`, un fichier `.env` ou des mots de 
 
 ## Prochaine étape
 
-Terminer l'interface GEST de gestion des utilisateurs et des restrictions, puis développer le CRUD du module Marchés.
+Tester l'authentification et la gestion GEST, puis développer le CRUD du module Marchés.
