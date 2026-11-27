@@ -85,7 +85,7 @@ Les libellés historiques ont été confirmés :
 | 5 | Attribution / Verdict | 5 — Attente du résultat, ou 6 si attribué |
 | 6 | Clôture & historique | 8 — Clôturé / archivé |
 
-L'ancienne phase 6 est toujours convertie en nouvelle phase 8, indépendamment de l'ancien statut. Les anciennes valeurs de statut et de phase doivent rester conservées dans l'historique de migration.
+L'ancienne phase 6 est toujours convertie en statut clôturé et nouvelle phase 8, indépendamment de l'ancien statut, car son libellé historique est « Clôture & historique ». Un ancien statut `cloture` est également normalisé en phase 8. L'ancien statut `gagne` n'est pas suffisant pour conclure automatiquement à une attribution complète : le dossier est placé temporairement en `a_qualifier`, phase 5, jusqu'à ce que GEST confirme la date de décision et le montant attribué. Les anciennes valeurs de statut et de phase restent conservées dans l'historique de migration.
 
 ## 8. Compatibilité avec la base actuelle
 
