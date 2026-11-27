@@ -1,17 +1,10 @@
-/* =========================================================================
-   DONNÉES DE DÉMONSTRATION POUR LE SQUELETTE ERP MANAGER
-   ========================================================================= */
-const COMPANIES = [
-  { id: 'AIT_KHAYI_DRISS', name: 'AIT KHAYI DRISS', short: 'AIT KHAYI DRISS', color: '#3b82f6' },
-  { id: 'ONCADEMY', name: 'ONCADEMY / DEUTSCH ZENTRUM', short: 'ONCADEMY / DEUTSCH Z.', color: '#10b981' },
-  { id: 'DROGUEMED', name: 'DROGUEMED', short: 'DROGUEMED', color: '#a855f7' },
-  { id: 'ATLAS_INFRA', name: 'ATLAS INFRA & SERVICES', short: 'ATLAS INFRA & SERVICES', color: '#06b6d4' },
-  { id: 'NORD_INGENIERIE', name: 'NORD INGÉNIERIE CONSEIL', short: 'NORD INGÉNIERIE CONSEIL', color: '#f43f5e' }
-];
+/* Données chargées depuis MySQL par public/index.php. */
+const ERP_DATA = window.ERP_DASHBOARD_DATA || { companies: [], markets: [] };
+const COMPANIES = Array.isArray(ERP_DATA.companies) ? ERP_DATA.companies : [];
 
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Tableau de bord', badge: null, active: true },
-  { id: 'marches', label: 'Marchés', badge: '8', active: false },
+  { id: 'marches', label: 'Marchés', badge: null, active: false },
   { id: 'archive', label: 'Archive', badge: null, active: false },
   { id: 'cautions', label: 'Cautions & RG', badge: null, active: false },
   { id: 'charges', label: 'Charges', badge: null, active: false },
@@ -126,16 +119,7 @@ const STATUS_META = {
   en_attente: { label: 'En attente', color: '#0891b2', badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200', borderTop: 'border-t-cyan-500' }
 };
 
-const MARCHES_DATA = [
-  { numero: 'M-2026-008', objet: 'Aménagement voirie et réseaux divers — Lot 2', companyId: 'AIT_KHAYI_DRISS', status: 'en_attente', phase: 1, amount: 1250000, date: '25/11/2026' },
-  { numero: 'M-2026-007', objet: 'Construction annexe administrative & salles', companyId: 'ONCADEMY', status: 'en_cours', phase: 2, amount: 987500, date: '21/11/2026' },
-  { numero: 'M-2026-006', objet: 'Fourniture équipements médicaux spécialisés', companyId: 'DROGUEMED', status: 'en_cours', phase: 3, amount: 750000, date: '18/11/2026' },
-  { numero: 'M-2026-005', objet: 'Réhabilitation infrastructure routière régionale', companyId: 'ATLAS_INFRA', status: 'gagne', phase: 5, amount: 1640000, date: '14/11/2026' },
-  { numero: 'M-2026-004', objet: 'Étude technique et maîtrise d’œuvre génie civil', companyId: 'NORD_INGENIERIE', status: 'en_attente', phase: 2, amount: 420000, date: '10/11/2026' },
-  { numero: 'M-2026-003', objet: 'Travaux de terrassement et soutènement', companyId: 'AIT_KHAYI_DRISS', status: 'en_cours', phase: 4, amount: 860000, date: '06/11/2026' },
-  { numero: 'M-2026-002', objet: 'Audit qualité et contrôle des ouvrages', companyId: 'NORD_INGENIERIE', status: 'cloture', phase: 6, amount: 315000, date: '02/11/2026' },
-  { numero: 'M-2026-001', objet: 'Maintenance réseaux et génie urbain', companyId: 'ATLAS_INFRA', status: 'perdu_annule', phase: 5, amount: 540000, date: '28/10/2026' }
-];
+const MARCHES_DATA = Array.isArray(ERP_DATA.markets) ? ERP_DATA.markets : [];
 
 let state = {
   variant: 'B',
@@ -145,6 +129,11 @@ let state = {
 };
 
 let doughnutChartInstance = null;
+
+function escapeHtml(value) {
+  return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
 
 function formatMAD(amount) {
   return new Intl.NumberFormat('fr-MA', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' MAD';
@@ -231,7 +220,7 @@ function renderCompanySelectors() {
             ${getSubsidiaryBuildingSvgIcon()}
             <span class="w-2.5 h-2.5 rounded-full ring-2 ring-[#0f294a] absolute -top-0.5 -right-0.5 shadow-sm" style="background-color: ${c.color}; box-shadow: 0 0 8px ${c.color}88;"></span>
           </span>
-          <span class="truncate"><span class="text-blue-300/60 font-semibold mr-1">${index + 1}.</span>${c.name}</span>
+          <span class="truncate"><span class="text-blue-300/60 font-semibold mr-1">${index + 1}.</span>${escapeHtml(c.name)}</span>
         </span>
         <span class="text-[11px] opacity-80 font-medium">${count}</span>
       </button>
@@ -491,12 +480,12 @@ function renderTable() {
       const statusMeta = STATUS_META[m.status];
       return `
         <tr class="hover:bg-slate-50/90 transition">
-          <td class="${rowPadding} font-bold text-[#0f294a] whitespace-nowrap">${m.numero}</td>
-          <td class="${rowPadding} text-slate-800 font-medium min-w-[200px]">${m.objet}</td>
+          <td class="${rowPadding} font-bold text-[#0f294a] whitespace-nowrap">${escapeHtml(m.numero)}</td>
+          <td class="${rowPadding} text-slate-800 font-medium min-w-[200px]">${escapeHtml(m.objet)}</td>
           <td class="${rowPadding} whitespace-nowrap">
             <span class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700">
               <span class="w-2 h-2 rounded-full" style="background-color:${company.color}"></span>
-              <span>${company.short}</span>
+              <span>${escapeHtml(company.short)}</span>
             </span>
           </td>
           <td class="${rowPadding} text-xs font-semibold text-slate-600 whitespace-nowrap">Phase ${m.phase}</td>
@@ -506,7 +495,7 @@ function renderTable() {
             </span>
           </td>
           <td class="${rowPadding} text-right font-bold text-slate-900 whitespace-nowrap">${formatMAD(m.amount)}</td>
-          <td class="${rowPadding} text-xs text-slate-500 whitespace-nowrap">${m.date}</td>
+          <td class="${rowPadding} text-xs text-slate-500 whitespace-nowrap">${escapeHtml(m.date)}</td>
         </tr>
       `;
     }).join('');
@@ -530,6 +519,12 @@ function updateClock() {
 window.addEventListener('DOMContentLoaded', () => {
   updateClock();
   setInterval(updateClock, 1000);
+  const marketNavItem = NAV_ITEMS.find(item => item.id === 'marches');
+  if (marketNavItem) marketNavItem.badge = String(MARCHES_DATA.length);
+  if (window.ERP_DATABASE_ERROR) {
+    const banner = document.getElementById('alertBanner');
+    if (banner) banner.innerHTML = '<div class="text-sm text-red-900"><strong>Connexion à la base de données impossible.</strong> Vérifiez config/database.local.php et que MySQL est démarré.</div>';
+  }
   renderCompanySelectors();
   setVariant('B');
 });
