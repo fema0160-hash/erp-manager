@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title><?= htmlspecialchars($pageTitle ?? 'Tableau de bord', ENT_QUOTES, 'UTF-8') ?> | MarchésPro ERP</title>
   <link rel="stylesheet" href="assets/css/app.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
   <!-- Chargement de Tailwind CSS pour une mise en page fluide et adaptative -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chargement de Chart.js pour la visualisation en anneau -->
@@ -50,9 +51,7 @@
       <div class="overflow-y-auto">
         <div class="px-4 py-3.5 border-b border-white/10 flex items-center justify-between">
           <div class="flex items-center gap-2.5 min-w-0">
-            <div class="w-9 h-9 rounded-xl bg-[#ea9a10] text-slate-950 font-extrabold flex items-center justify-center shadow-sm shrink-0 text-sm">
-              MP
-            </div>
+            <img src="assets/images/erp-manager-mark.svg" alt="ERP Manager" class="w-10 h-10 rounded-xl shrink-0 shadow-sm">
             <div class="min-w-0">
               <div class="font-bold text-sm tracking-tight text-white truncate">MarchésPro <span class="text-[#ea9a10]">ERP</span></div>
               <div class="text-[10px] uppercase tracking-wider text-blue-200/80 font-medium truncate">Holding · 5 Filiales</div>
