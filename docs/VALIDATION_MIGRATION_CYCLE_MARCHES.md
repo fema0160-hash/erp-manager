@@ -75,7 +75,7 @@ La correspondance des six anciennes phases a été confirmée par l'utilisateur 
 | 2 | Montage dossier | Nouvelle phase 3 — Préparation de la soumission |
 | 3 | Chiffrage & offre | Nouvelle phase 2 — Étude et BPU |
 | 4 | Dépôt & soutenance | Nouvelle phase 4 — Soumis |
-| 5 | Attribution / Verdict | Nouvelle phase 5 — Attente du résultat ; phase 6 si le marché est attribué |
+| 5 | Attribution / Verdict | Nouvelle phase 5 — Attente du résultat ; passage en phase 6 uniquement après qualification et validation de l'attribution par GEST |
 | 6 | Clôture & historique | Nouvelle phase 8 — Clôturé / archivé, quel que soit l'ancien statut |
 
 Les anciennes phases 2 et 3 sont donc réordonnées selon leur signification réelle : le montage du dossier précède le chiffrage et l'offre dans le nouveau cycle retenu. L'ancienne phase 6 est convertie en statut `cloture` et phase 8 sans condition sur l'ancien statut, car son libellé historique confirmé est « Clôture & historique ». Un ancien statut `cloture` est également normalisé en phase 8. L'ancien statut `gagne` n'est pas converti automatiquement en `attribue` : la migration le place en `a_qualifier`, phase 5, car les informations historiques ne garantissent pas la présence de la date de décision et du montant attribué exigés. GEST devra compléter et confirmer ces données. L'ancien statut `perdu_annule` reste également en `a_qualifier`. Toutes les valeurs sources restent conservées dans l'historique de migration.
