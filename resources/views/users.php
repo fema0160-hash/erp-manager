@@ -5,7 +5,6 @@ $csrf = $auth->csrfToken();
 $eligibleUsers = array_values(array_filter($users, static fn (array $user): bool => $user['role'] !== 'GEST'));
 ?>
 <?php require __DIR__ . '/partials/app-layout-start.php'; ?>
-  <main class="max-w-6xl mx-auto p-4 sm:p-6 space-y-5">
     <?php if ($successMessage !== ''): ?><div class="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 px-4 py-3 text-sm font-semibold"><?= $h($successMessage) ?></div><?php endif; ?>
     <?php if ($errorMessage !== ''): ?><div role="alert" class="rounded-xl bg-red-50 border border-red-200 text-red-800 px-4 py-3 text-sm"><?= $h($errorMessage) ?></div><?php endif; ?>
 
