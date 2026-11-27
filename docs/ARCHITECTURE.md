@@ -11,7 +11,8 @@ Construire une application PHP/MySQL légère, en français, évolutive par éta
 - Authentification : connexion, déconnexion et gestion des sessions.
 - Rôles : GEST, SECR et CHAD.
 - Mot de passe initial : 123, stocké uniquement sous forme de hash ; changement demandé par une alerte rouge non bloquante.
-- Autorisations : accès total par défaut ; les restrictions enregistrées s'appliquent par entreprise et par fonction.
+- Gestion GEST : création de comptes SECR/CHAD, activation/désactivation, réinitialisation du mot de passe et restrictions par entreprise/fonction.
+- Autorisations : accès total par défaut ; seules les restrictions enregistrées bloquent un accès.
 - Marchés : données de démonstration consultables sur le tableau de bord ; le CRUD reste à développer.
 - Entreprises : données de démonstration ; gestion des entreprises à développer.
 
@@ -32,6 +33,7 @@ Construire une application PHP/MySQL légère, en français, évolutive par éta
 - Tous les droits fonctionnels sont accordés par défaut.
 - Une restriction explicite dans les tables de restrictions retire l'accès concerné.
 - Le rôle GEST conserve l'administration générale et n'est pas limité par ces restrictions.
+- L'écran Utilisateurs & droits est réservé au rôle GEST.
 
 ## Installation de la base
 
