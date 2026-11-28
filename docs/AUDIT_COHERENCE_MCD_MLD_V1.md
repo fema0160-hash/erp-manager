@@ -192,7 +192,34 @@ Fichier : database/migrations/011_market_execution_retention_closure.sql.
 
 **Conclusion de la relecture :** les scripts 007 à 011 existent maintenant comme brouillons structurés et les écarts connus entre le champ de montant du lot et le MLD ont été corrigés. Cette relecture est statique ; elle ne constitue ni une validation d'exécution SQL ni une autorisation d'installation.
 
-## 7. Ordre de déploiement proposé
+## 7. Audit SQL ciblé — migrations 005 à 011
+
+### Vérifications statiques réalisées
+
+- Relecture des définitions de tables, colonnes, index uniques et clés étrangères composites des migrations 005 à 011.
+- Contrôle des clés candidates référencées : les FK composites examinées disposent d'une clé UNIQUE correspondante dans l'ordre des colonnes attendu (lots, qualifications, transitions, documents, cautions, BPU, périodes, alertes, situations et retenues).
+- Contrôle de la dépendance d'ordre : 005 exige 004 ; 006 exige 005 ; 007 crée les documents avant les FK documentaires ; 008 à 011 s'appuient sur les tables créées précédemment.
+- Aucun script n'a été importé dans MariaDB pendant cet audit. La vérification de syntaxe réelle, des triggers et des CHECK reste à faire sur une copie MariaDB 10.4.32.
+
+### Écart détecté et correction appliquée sur main
+
+- Le MLD prévoyait `market_submissions.proof_document_id`, mais la migration 006 ne créait pas cette colonne et aucune FK ne reliait la preuve au document privé.
+- Correction : ajout de `proof_document_id` dans `006_market_core_details.sql`, puis création de l'index et de la FK composite vers `stored_documents(id, market_id, company_id)` dans `007_market_documents_checklist.sql`, après création de `stored_documents`.
+- MLD harmonisé avec les contraintes réelles de remplacement des cautions et clarification des instantanés TTC.
+
+### Réserves techniques et métier à lever
+
+1. **Base TTC de la retenue — BLOQUANT FONCTIONNEL :** `markets.awarded_amount` puis `market_lots.awarded_amount` ne portent pas un suffixe HT/TTC. Le MLD exige que la base soit le montant TTC initial attribué. Le service d'attribution doit donc garantir et documenter que cette valeur est TTC avant de remplir `market_award_details.retention_base_amount_ttc` et `retention_cap_amount_ttc`. Ne jamais déduire le TTC d'un montant ambigu.
+2. **Initialisation GEST en 006 :** les deux INSERT de paramètres ne produisent aucune ligne si le compte `gest` est absent ; le commentaire du script disait à tort que le contrôle échouerait automatiquement. Le précontrôle doit explicitement vérifier qu'un seul compte GEST existe avant l'exécution, puis vérifier le nombre de paramètres créés par société.
+3. **Validation des situations :** `market_work_situations` conserve `approved_at`, mais pas l'identifiant de l'utilisateur ayant validé la situation. Le service devra au minimum historiser l'approbateur dans l'audit applicatif ; une colonne `approved_by` avec FK utilisateur est recommandée avant mise en production.
+4. **Règles non imposables par les contraintes actuelles :** une seule période initiale et l'absence de chevauchement, une seule version BPU finale, absence de cycles de remplacement de caution, cohérence HT + TVA = TTC, immutabilité des BPU finalisés et calcul cumulatif de retenue exigent les services transactionnels décrits dans les scripts.
+5. **Migration 007 et triggers :** l'import devra être effectué par un outil qui gère correctement les blocs `DELIMITER`. Tester explicitement création, déclenchement, permissions et comportement des triggers sur MariaDB 10.4.32.
+6. **Migration 006 :** vérifier avant installation que le compte `gest` attendu existe, que les sociétés concernées sont bien celles voulues, et que le nombre de paramètres insérés est exactement deux par société.
+7. **Migrations 005 à 011 :** MariaDB exécute certains DDL avec commits implicites. Un essai d'installation complet sur une copie restaurable et une procédure de reprise par instruction sont obligatoires.
+
+**Statut de cette passe :** audit statique renforcé et une incohérence MLD/SQL corrigée. Les migrations 005 à 011 restent des BROUILLONS NON EXÉCUTÉS ; aucune autorisation d'installation n'est donnée par cet audit.
+
+## 8. Ordre de déploiement proposé
 
 1. Vérifier la base réelle et l'état des migrations 001 à 004.
 2. Sauvegarder puis restaurer la sauvegarde dans une base de test.
