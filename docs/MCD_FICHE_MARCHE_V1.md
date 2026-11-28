@@ -3,7 +3,7 @@ Référence : erp-manager/docs/MCD_FICHE_MARCHE_V1.md
 # MCD — Modèle conceptuel de données de la fiche marché
 
 - Projet : ERP Manager
-- Version : MCD Fiche Marché V1
+- Version : MCD Fiche Marché V1.1 — décisions métier intégrées
 - Référence Git : branche `main`
 - Base cible : MariaDB 10.4.32 / InnoDB / utf8mb4
 - Devise par défaut : MAD (DH)
@@ -40,13 +40,15 @@ Les permissions et restrictions existantes restent utilisées. Aucun nouveau sys
 ### 3.1 Dossier et intervenants
 
 **MARKET_DETAILS**
-- informations complémentaires du dossier ;
-- numéro d'appel d'offres ;
-- maître d'ouvrage ;
-- maître d'œuvre ;
-- durée initiale ;
-- renouvelabilité et durée de renouvellement ;
-- lot, nature et lieu d'exécution.
+- informations communes au dossier : numéro d'appel d'offres, maître d'ouvrage, maître d'œuvre, durée initiale, renouvelabilité, nature et lieu d'exécution ;
+- ne porte pas les informations propres aux lots.
+
+**MARKET_LOT**
+- lot indépendant rattaché au dossier ;
+- un lot n° 1 est créé automatiquement à la création du marché ;
+- d'autres lots peuvent être ajoutés ;
+- chaque lot possède son propre état, sa phase, son résultat, son montant attribué, son BPU, ses cautions/garanties, ses périodes contractuelles et son suivi d'exécution ;
+- les décisions de résultat et les validations sont indépendantes par lot.
 
 **MARKET_ORGANIZATION**
 - organisme client, maître d'ouvrage ou maître d'œuvre ;
@@ -69,10 +71,18 @@ Les permissions et restrictions existantes restent utilisées. Aucun nouveau sys
 - preuve de dépôt.
 
 **MARKET_GUARANTEE**
-- caution provisoire ou définitive ;
+- caution provisoire ou définitive rattachée à un lot ;
+- plusieurs cautions successives du même type sont conservées ;
 - montant requis et montant obtenu ;
 - état de préparation et date d'obtention ;
-- référence éventuelle, échéance et justificatif.
+- référence, échéance, justificatif et lien facultatif vers la caution remplacée.
+
+**MARKET_RETENTION_EVENT**
+- prélèvement de retenue de garantie sur une situation de travaux validée ;
+- calcul sur le TTC ;
+- taux initial paramétré à 10 % et plafond cumulé paramétré à 7 % du montant TTC attribué au lot ;
+- dernier prélèvement limité au solde disponible avant plafond ;
+- historique immuable des calculs.
 
 **MARKET_AWARD_DETAILS**
 - numéro officiel du marché attribué ;
@@ -113,7 +123,9 @@ La décision officielle elle-même reste portée par les entités de qualificati
 - numéro de version, état, auteur, date, motif et total.
 
 **MARKET_BPU_ITEM**
-- ligne détaillée d'une version : code, désignation, unité, quantité, prix unitaire et montant calculé.
+- ligne détaillée d'une version : code, désignation, unité, quantité, prix unitaire HT ;
+- taux de TVA enregistré par ligne ;
+- montants HT, TVA et TTC calculés côté serveur.
 
 **MARKET_BPU_IMPORT**
 - journal d'un import ;
@@ -144,8 +156,9 @@ La décision officielle elle-même reste portée par les entités de qualificati
 - auteur, taux d'avancement, montant réalisé et justificatif.
 
 **MARKET_WORK_SITUATION**
-- situation ou décompte de travaux ;
-- période, montant, état de validation et document justificatif.
+- situation ou décompte de travaux rattaché à un lot ;
+- période, montants HT/TVA/TTC, état de validation et document justificatif ;
+- montant TTC servant de base au prélèvement de retenue de garantie.
 
 **MARKET_AMENDMENT**
 - avenant, modification contractuelle, incidence financière et/ou sur le délai ;
@@ -184,6 +197,11 @@ La décision officielle elle-même reste portée par les entités de qualificati
 | COMPANY | configure | MARKET_ALERT_RULE | 1,N |
 | COMPANY | numérote | MARKET_NUMBER_SEQUENCE | 1,N |
 | MARKET | possède | MARKET_DETAILS | 1,1 |
+| MARKET | possède | MARKET_LOT | 1,N (un lot créé par défaut) |
+| MARKET_LOT | possède | résultat/validation | 0,N / 0,1 par qualification |
+| MARKET_LOT | possède | BPU_VERSION | 0,N |
+| MARKET_LOT | possède | MARKET_GUARANTEE | 0,N |
+| MARKET_LOT | possède | MARKET_CONTRACT_PERIOD | 1,N |
 | MARKET | possède | MARKET_STUDY | 1,1 |
 | MARKET | possède | MARKET_SUBMISSION | 0,1 |
 | MARKET | possède | MARKET_AWARD_DETAILS | 0,1 |
@@ -216,12 +234,15 @@ erDiagram
     COMPANY ||--o{ MARKET_NUMBER_SEQUENCE : numerote
 
     MARKET ||--|| MARKET_DETAILS : detaille
+    MARKET ||--|{ MARKET_LOT : lots
+    MARKET_LOT ||--o{ MARKET_RESULT_QUALIFICATION : resultats
+    MARKET_LOT ||--o{ MARKET_BPU_VERSION : bpu
+    MARKET_LOT ||--o{ MARKET_GUARANTEE : cautions
     MARKET ||--|| MARKET_STUDY : etude
     MARKET ||--o| MARKET_SUBMISSION : depot
     MARKET ||--o| MARKET_AWARD_DETAILS : attribution
-    MARKET ||--o{ MARKET_GUARANTEE : caution
     MARKET ||--o{ MARKET_TRANSITION : historique
-    MARKET ||--o{ MARKET_RESULT_QUALIFICATION : qualification
+    MARKET_LOT ||--o{ MARKET_TRANSITION : historique_lot
     MARKET_RESULT_QUALIFICATION ||--o| MARKET_RESULT_VALIDATION : validation
 
     MARKET_ORGANIZATION ||--o{ MARKET_DETAILS : maitre_ouvrage
@@ -232,17 +253,18 @@ erDiagram
     MARKET_DOCUMENT_CHECKLIST_ITEM ||--o{ MARKET_DOCUMENT_CHECKLIST_EVENT : historise
     MARKET ||--o{ STORED_DOCUMENT : fichiers
 
-    MARKET ||--o{ MARKET_BPU_VERSION : versions
+    MARKET_LOT ||--o{ MARKET_BPU_VERSION : versions
     MARKET_BPU_VERSION ||--|{ MARKET_BPU_ITEM : lignes
     MARKET_BPU_VERSION ||--o{ MARKET_BPU_IMPORT : imports
 
-    MARKET ||--|{ MARKET_CONTRACT_PERIOD : periodes
+    MARKET_LOT ||--|{ MARKET_CONTRACT_PERIOD : periodes
     MARKET_CONTRACT_PERIOD ||--o{ MARKET_ALERT : echeances
-    MARKET ||--o{ MARKET_EXECUTION_EVENT : suivi
-    MARKET ||--o{ MARKET_WORK_SITUATION : situations
-    MARKET ||--o{ MARKET_AMENDMENT : avenants
-    MARKET ||--o{ MARKET_RECEPTION : receptions
-    MARKET ||--o| MARKET_CLOSURE : cloture
+    MARKET_LOT ||--o{ MARKET_EXECUTION_EVENT : suivi
+    MARKET_LOT ||--o{ MARKET_WORK_SITUATION : situations
+    MARKET_LOT ||--o{ MARKET_AMENDMENT : avenants
+    MARKET_LOT ||--o{ MARKET_RECEPTION : receptions
+    MARKET_LOT ||--o| MARKET_CLOSURE : cloture
+    MARKET_WORK_SITUATION ||--o{ MARKET_RETENTION_EVENT : retenue
 ```
 
 ## 6. Règles de gestion fondamentales
@@ -252,29 +274,35 @@ erDiagram
 3. Le maître d'ouvrage et le maître d'œuvre sélectionnés doivent appartenir à la même société que le marché.
 4. Le numéro interne de dossier est généré automatiquement et distinct du numéro d'appel d'offres et du numéro officiel du marché attribué.
 5. Les paramètres sont définis par société et les valeurs appliquées sont figées dans le dossier.
-6. Le taux de retenue de garantie est repris depuis les paramètres ; le montant est calculé automatiquement à partir de la base contractuelle explicitement configurée.
+6. Le prélèvement de retenue est de 10 % du TTC de chaque situation validée, plafonné à 7 % du montant TTC initial attribué au lot. Le taux et le plafond sont modifiables par société ; les valeurs appliquées sont figées dans l'historique.
 7. Le tableau documentaire est copié depuis le modèle au moment de son initialisation ; les changements futurs du modèle n'affectent pas les dossiers existants.
 8. Le tableau documentaire comporte exactement trois colonnes visibles : désignation, case à cocher, date. La colonne « N° attribué » n'existe pas.
 9. La date du tableau est enregistrée au clic. Les coches et décoches sont historisées.
 10. Le tableau est consultable en phases 3 et 4 puis verrouillé après confirmation du dépôt et passage en phase 5.
-11. Une seule version BPU peut être désignée finale pour une soumission donnée ; les versions antérieures restent consultables.
+11. Chaque lot possède ses versions BPU indépendantes ; chaque ligne calcule HT, TVA et TTC côté serveur. Une seule version finale active par lot ; les versions antérieures restent consultables.
 12. Les périodes contractuelles et renouvellements ne s'écrasent jamais.
 13. Les alertes sont calculées depuis les dates des périodes et les règles configurées ; elles sont idempotentes pour éviter les doublons.
-14. Les résultats officiels restent soumis au mécanisme de qualification/validation existant.
+14. Chaque lot dispose d'un résultat officiel indépendant, soumis au mécanisme de qualification/validation existant adapté au lot.
 15. Aucun résultat perdu, annulé ou infructueux ne déclenche les tables de suivi d'exécution.
 16. La clôture exige une vérification des pièces et garanties, avec justification des exceptions.
 17. Tous les utilisateurs actifs ont les accès fonctionnels par défaut demandés ; les contrôles d'authentification, d'isolation par société, CSRF et journalisation restent obligatoires.
 18. Aucun fichier ni document ne doit être servi directement depuis un répertoire public.
 
-## 7. Points restant à arbitrer avant le schéma SQL final
+## 7. Décisions métier consolidées et points restant ouverts
 
-- Le taux de retenue et sa base de calcul peuvent-ils varier d'une société à l'autre ? Proposition : oui, paramètres par société.
-- Le modèle documentaire est-il identique pour toutes les sociétés ? Proposition : un modèle configurable par société.
-- Un marché peut-il avoir plusieurs lots avec BPU et résultats indépendants ? Le champ lot simple est prévu dans V1 ; si l'indépendance des lots est nécessaire, il faudra une entité MARKET_LOT avant le SQL.
-- Les renouvellements peuvent-ils être partiels ou seulement complets ? Le modèle de périodes permet plusieurs renouvellements, mais les règles de fractionnement doivent être précisées.
-- Les alertes doivent-elles être envoyées uniquement dans l'application ou également par e-mail ? Le modèle prévoit d'abord les notifications internes ; l'e-mail pourra être ajouté après connexion du service.
-- Le BPU doit-il gérer les prix HT, TVA et TTC séparément ? Proposition V1 : quantité × prix unitaire HT, TVA configurable par ligne, total HT/TVA/TTC.
-- Les situations de travaux doivent-elles intégrer retenue de garantie et pénalités de retard ? Proposition : prévoir les champs dans une version ultérieure après validation des règles comptables.
+Décisions confirmées :
+- Un marché crée automatiquement un lot n° 1 ; plusieurs lots peuvent ensuite être ajoutés et gérés indépendamment.
+- Chaque lot possède son résultat, son cycle, son BPU, ses cautions, son contrat et son suivi d'exécution indépendants.
+- BPU : calcul HT, TVA et TTC par ligne, avec taux de TVA enregistré et calcul serveur.
+- Retenue : 10 % du TTC de chaque situation validée, plafonnée à 7 % du montant TTC initial attribué au lot ; paramètres modifiables par société et instantanés historiques.
+- Plusieurs cautions successives du même type sont conservées sans écrasement.
+- Paramètres propres à chaque société en V1 ; paramètres communs au groupe reportés à une version ultérieure.
+
+Points encore ouverts :
+- Règles de renouvellement partiel ou complet.
+- Notifications internes seulement ou également e-mail/SMS.
+- Formats, tailles maximales et durée de conservation des documents.
+- Gestion éventuelle des pénalités de retard.
 
 ## 8. Limites
 
