@@ -95,7 +95,24 @@ final class MarketLifecycle
                 'amount' => $amount, 'market_date' => $marketDate,
             ]);
             $marketId = (int) $pdo->lastInsertId();
-            self::insertHistory($pdo, $marketId, 'creation', null, null, 'en_cours', 1, $userId, 'Création initiale du marché.');
+            if (self::lotsSchemaReady($pdo)) {
+                $lotInsert = $pdo->prepare(
+                    "INSERT INTO market_lots
+                        (market_id, company_id, lot_number, lot_reference, lot_label, lifecycle_status, lifecycle_phase)
+                     VALUES (:market_id, :company_id, 1, NULL, 'Lot unique', 'en_cours', 1)"
+                );
+                $lotInsert->execute(['market_id' => $marketId, 'company_id' => $companyId]);
+                $lot = [
+                    'id' => (int) $pdo->lastInsertId(), 'market_id' => $marketId,
+                    'company_id' => $companyId,
+                ];
+                self::insertLotHistory(
+                    $pdo, $lot, 'creation', null, null, 'en_cours', 1, $userId,
+                    'Création initiale du marché et de son lot n° 1.'
+                );
+            } else {
+                self::insertHistory($pdo, $marketId, 'creation', null, null, 'en_cours', 1, $userId, 'Création initiale du marché.');
+            }
             $pdo->commit();
             return $marketId;
         } catch (Throwable $exception) {
