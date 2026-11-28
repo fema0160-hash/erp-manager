@@ -73,7 +73,7 @@ Fichier : `database/migrations/004_result_qualification_validation.sql`.
 
 ### Migration 005 — `005_market_lots_independent.sql`
 
-<badge> BROUILLON — NON EXÉCUTÉ </badge>
+**Statut : BROUILLON — NON EXÉCUTÉ**
 
 - Ajoute la clé candidate `UNIQUE(markets.id, markets.company_id)`.
 - Crée `market_lots` avec clé `BIGINT UNSIGNED), numéro séquentiel, état et phase propres au lot.
@@ -87,7 +87,7 @@ Fichier : `database/migrations/004_result_qualification_validation.sql`.
 
 ### Migration 006 — `006_market_core_details.sql`
 
-<badge> BROUILLON — NON EXÉCUTÉ </badge>
+**Statut : BROUILLON — NON EXÉCUTÉ**
 
 - Ajoute le numéro interne et la date de modification du marché.
 - Crée les paramètres par société et leur historique.
