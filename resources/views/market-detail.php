@@ -18,6 +18,9 @@ foreach ($qualifications as $qualification) {
 }
 $canSubmitQualification = $canQualify && $phase === 5 && in_array($status, ['en_cours', 'a_qualifier'], true) && !$pendingExists;
 $hTitle = (string) ($market['reference'] ?? 'Marché');
+$selectedLotId = (int) ($selectedLotId ?? 0);
+$detailAction = '?page=marche&id=' . (int) ($market['id'] ?? 0) . ($lotsSchemaReady && $selectedLotId > 0 ? '&lot_id=' . $selectedLotId : '');
+$canCreateLot = $lotsSchemaReady && $auth->hasPermission($userId, $role, $companyId, 'markets.create');
 ?>
 <?php require __DIR__ . '/partials/app-layout-start.php'; ?>
 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -51,6 +54,47 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
   </div>
 </section>
 
+<?php if ($lotsSchemaReady): ?>
+<section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <h3 class="font-extrabold text-[#0f294a]">Lots indépendants</h3>
+      <p class="text-xs text-slate-500 mt-1">Chaque lot possède son propre résultat, ses phases et son historique.</p>
+    </div>
+    <span class="rounded-full bg-blue-50 text-blue-800 px-3 py-1.5 text-xs font-bold"><?= count($lots) ?> lot(s)</span>
+  </div>
+  <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+    <?php foreach ($lots as $lotRow): ?>
+      <?php $isSelectedLot = (int) $lotRow['id'] === $selectedLotId; ?>
+      <a href="?page=marche&id=<?= (int) $market['id'] ?>&lot_id=<?= (int) $lotRow['id'] ?>"
+         class="rounded-xl border p-4 transition <?= $isSelectedLot ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100' : 'border-slate-200 hover:border-blue-300 hover:bg-slate-50' ?>">
+        <div class="flex items-start justify-between gap-2">
+          <span class="font-extrabold text-[#0f294a]">Lot n° <?= (int) $lotRow['lot_number'] ?></span>
+          <?php if ($isSelectedLot): ?><span class="text-[10px] font-bold text-blue-800">Sélectionné</span><?php endif; ?>
+        </div>
+        <p class="mt-1 text-sm font-semibold text-slate-800"><?= $h($lotRow['lot_label']) ?></p>
+        <?php if (!empty($lotRow['lot_reference'])): ?><p class="mt-1 text-xs text-slate-500">Réf. <?= $h($lotRow['lot_reference']) ?></p><?php endif; ?>
+        <p class="mt-3 text-xs text-slate-600">Phase <?= (int) $lotRow['lifecycle_phase'] ?> — <?= $h($phaseLabels[(int) $lotRow['lifecycle_phase']] ?? '') ?></p>
+        <p class="mt-1 text-xs font-semibold text-slate-700"><?= $h($statusLabels[$lotRow['lifecycle_status']] ?? $lotRow['lifecycle_status']) ?></p>
+      </a>
+    <?php endforeach; ?>
+  </div>
+  <?php if ($canCreateLot): ?>
+    <form method="post" action="<?= $h($detailAction) ?>" class="mt-4 border-t border-slate-100 pt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>">
+      <input type="hidden" name="action" value="create_lot">
+      <label class="text-sm font-semibold text-slate-700">Nom du nouveau lot *
+        <input name="lot_label" required maxlength="180" placeholder="Ex. Travaux de voirie" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal">
+      </label>
+      <label class="text-sm font-semibold text-slate-700">Référence du lot
+        <input name="lot_reference" maxlength="100" placeholder="Référence facultative" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal">
+      </label>
+      <div class="flex items-end"><button class="w-full rounded-lg bg-[#0f294a] text-white px-4 py-2.5 text-sm font-bold">+ Ajouter un lot</button></div>
+    </form>
+  <?php endif; ?>
+</section>
+<?php endif; ?>
+
 <?php
 $phaseStates = [];
 foreach ($phaseLabels as $phaseNumber => $phaseLabel) {
@@ -66,9 +110,9 @@ $decisionCards = [
     ['code' => 'infructueux', 'title' => 'Infructueux', 'description' => 'Fin du parcours normal', 'action' => 'Terminé'],
 ];
 ?>
-<section class="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 shadow-sm" aria-label="Cycle de vie du marché">
+<section class="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 shadow-sm" aria-label="Cycle de vie du lot">
   <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
-    <h3 class="font-extrabold text-[#0f294a]">Cycle de vie du marché</h3>
+    <h3 class="font-extrabold text-[#0f294a]">Cycle de vie <?= $lotsSchemaReady ? "du lot" : "du marché" ?></h3>
     <span class="rounded-full bg-blue-50 text-blue-800 px-3 py-1.5 text-xs font-bold">
       <?= $phase >= 1 && $phase <= 8 ? 'Phase ' . str_pad((string) $phase, 2, '0', STR_PAD_LEFT) . ' — ' . $h($phaseLabels[$phase] ?? '') : 'Phase inconnue' ?>
     </span>
@@ -104,7 +148,7 @@ $decisionCards = [
 
   <div class="mt-5 border-t border-slate-100 pt-4">
     <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-      <h4 class="text-sm font-extrabold uppercase tracking-wide text-slate-700">Décision après la phase 5</h4>
+      <h4 class="text-sm font-extrabold uppercase tracking-wide text-slate-700">Résultat après la phase 5</h4>
       <?php if ($phase < 5): ?>
         <span class="text-xs text-slate-500">Disponible à partir de la phase 5</span>
       <?php elseif (in_array($status, ['attribue', 'perdu', 'annule', 'infructueux'], true)): ?>
@@ -160,7 +204,7 @@ $decisionCards = [
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
     <h3 class="font-bold text-slate-900">Faire avancer le dossier</h3>
     <p class="text-sm text-slate-600 mt-1">Prochaine étape : phase <?= $phase + 1 ?> — <?= $h($phaseLabels[$phase + 1]) ?>. Aucune phase ne peut être sautée.</p>
-    <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-4 flex flex-col sm:flex-row gap-3">
+    <form method="post" action="<?= $h($detailAction) ?>" class="mt-4 flex flex-col sm:flex-row gap-3">
       <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>">
       <input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>">
       <input type="hidden" name="action" value="advance">
@@ -194,7 +238,7 @@ $decisionCards = [
 <?php if ($schemaReady): ?>
 <?php if ($canSubmitQualification): ?>
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-    <h3 class="font-bold text-slate-900">Qualifier le résultat</h3>
+    <h3 class="font-bold text-slate-900">Qualifier le résultat <?= $lotsSchemaReady ? "du lot" : "du marché" ?></h3>
     <p class="text-sm text-slate-600 mt-1">La proposition reste en attente. Elle ne devient officielle qu'après validation.</p>
     <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>"><input type="hidden" name="action" value="qualify">
@@ -219,7 +263,7 @@ $decisionCards = [
 <?php endif; ?>
 
 <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-  <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-bold text-slate-900">Qualifications et validations</h3><span class="text-xs text-slate-500"><?= count($qualifications) ?> proposition(s)</span></div>
+  <div class="flex flex-wrap items-center justify-between gap-2"><h3 class="font-bold text-slate-900">Qualifications et validations <?= $lotsSchemaReady ? "du lot" : "du marché" ?></h3><span class="text-xs text-slate-500"><?= count($qualifications) ?> proposition(s)</span></div>
   <?php if (!$qualifications): ?>
     <p class="text-sm text-slate-500 mt-4">Aucune qualification enregistrée.</p>
   <?php else: ?>
@@ -269,7 +313,7 @@ $decisionCards = [
 <?php endif; ?>
 
 <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
-  <div class="flex items-center justify-between gap-2"><h3 class="font-bold text-slate-900">Historique complet</h3><span class="text-xs text-slate-500"><?= count($history) ?> événement(s)</span></div>
+  <div class="flex items-center justify-between gap-2"><h3 class="font-bold text-slate-900">Historique <?= $lotsSchemaReady ? "du lot" : "du marché" ?></h3><span class="text-xs text-slate-500"><?= count($history) ?> événement(s)</span></div>
   <?php if (!$history): ?>
     <p class="text-sm text-slate-500 mt-4">Aucun événement d'historique pour ce marché.</p>
   <?php else: ?>
