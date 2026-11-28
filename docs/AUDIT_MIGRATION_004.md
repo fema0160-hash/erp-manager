@@ -31,6 +31,10 @@ La première version de la migration 004 a été corrigée avant toute installat
 - Les tables utilisent InnoDB et utf8mb4.
 - Les contraintes CHECK sont compatibles avec la cible MariaDB 10.4.32 annoncée dans le projet.
 
+## Permissions ajoutées
+
+La migration insère avec `INSERT IGNORE` quatre permissions dans la table `permissions` : `markets.lifecycle.advance`, `markets.results.qualify`, `markets.results.validate` et `markets.lifecycle.reopen`. Elles sont ouvertes par défaut selon le modèle actuel ; les restrictions par utilisateur et entreprise restent configurables par GEST. La réouverture est en plus contrôlée côté serveur et réservée au rôle GEST.
+
 ## Règles d'application obligatoires
 
 La migration ne suffit pas à garantir le processus métier. Le futur service PHP devra :
