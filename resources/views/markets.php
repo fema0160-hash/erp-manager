@@ -55,7 +55,7 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
           <?php if (!$markets): ?><tr><td colspan="7" class="p-8 text-center text-slate-500">Aucun marché ne correspond à votre recherche.</td></tr><?php else: ?>
             <?php foreach ($markets as $market): ?>
               <tr class="hover:bg-slate-50/80">
-                <td class="p-3 font-bold text-[#0f294a] whitespace-nowrap"><?= $h($market['reference']) ?><?php if ((int) $market['is_demo'] === 1): ?><span class="ml-1 text-[10px] font-semibold text-slate-400">Démo</span><?php endif; ?></td>
+                <td class="p-3 font-bold text-[#0f294a] whitespace-nowrap"><a href="?page=marche&id=<?= (int) $market['id'] ?>" class="hover:underline"><?= $h($market['reference']) ?></a><?php if ((int) $market['is_demo'] === 1): ?><span class="ml-1 text-[10px] font-semibold text-slate-400">Démo</span><?php endif; ?></td>
                 <td class="p-3 min-w-64"><?= nl2br($h($market['object'])) ?></td>
                 <td class="p-3 whitespace-nowrap"><?= $h($market['company_name']) ?></td>
                 <td class="p-3 whitespace-nowrap"><?= (int) $market['phase'] ?> — <?= $h($phaseLabels[(int) $market['phase']] ?? '') ?></td>
