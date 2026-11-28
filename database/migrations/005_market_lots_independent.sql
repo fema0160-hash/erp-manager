@@ -57,7 +57,7 @@ CREATE TABLE market_lots (
     lot_label VARCHAR(180) NOT NULL,
     lifecycle_status VARCHAR(20) NOT NULL DEFAULT 'en_cours',
     lifecycle_phase TINYINT UNSIGNED NOT NULL DEFAULT 1,
-    awarded_amount_ttc DECIMAL(15,2) NULL,
+    awarded_amount DECIMAL(15,2) NULL,
     official_result_qualification_id BIGINT UNSIGNED NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -78,7 +78,7 @@ CREATE TABLE market_lots (
         'infructueux', 'cloture', 'a_qualifier'
     )),
     CONSTRAINT chk_market_lots_awarded_amount CHECK (
-        awarded_amount_ttc IS NULL OR awarded_amount_ttc >= 0
+        awarded_amount IS NULL OR awarded_amount >= 0
     )
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
