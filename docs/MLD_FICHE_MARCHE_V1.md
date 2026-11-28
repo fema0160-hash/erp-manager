@@ -149,6 +149,8 @@ Données d'étude 1:1.
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `market_id` | INT UNSIGNED | Non | Marché |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné (FK composite vers market_lots) |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné (FK composite vers market_lots) |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `launch_date` | DATE | Non | Date de lancement |
 | `offer_deadline_at` | DATETIME | Non | Date/heure limite de remise |
@@ -234,6 +236,9 @@ Plusieurs cautions successives de chaque type peuvent être conservées pour un 
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `guarantee_type` | VARCHAR(24) | Non | `provisoire` ou `definitive` |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
+| `sequence_number` | SMALLINT UNSIGNED | Non | Numéro de caution successive pour ce type |
+| `replaces_guarantee_id` | BIGINT UNSIGNED | Oui | Caution remplacée, conservée dans l'historique |
 | `required_amount` | DECIMAL(15,2) | Non | Montant requis |
 | `obtained_amount` | DECIMAL(15,2) | Oui | Montant réellement obtenu |
 | `preparation_status` | VARCHAR(20) | Non | `a_preparer`, `preparee`, `obtenue`, `liberee`, `restituee` |
@@ -423,6 +428,7 @@ Chaque version BPU appartient à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT NUL
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `version_number` | SMALLINT UNSIGNED | Non | Numéro de version |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `version_status` | VARCHAR(16) | Non | `brouillon`, `importee`, `finale`, `archivee` |
 | `source_document_id` | BIGINT UNSIGNED | Oui | Fichier Excel/PDF source |
 | `total_ht` | DECIMAL(15,2) | Non | Total HT |
@@ -488,6 +494,7 @@ Chaque lot possède une période initiale et zéro ou plusieurs renouvellements.
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `period_number` | SMALLINT UNSIGNED | Non | Ordre chronologique |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `period_type` | VARCHAR(12) | Non | `initiale` ou `renouvellement` |
 | `start_date` | DATE | Non | Début |
 | `end_date` | DATE | Non | Fin |
@@ -548,6 +555,7 @@ Les événements d'exécution sont rattachés à un lot via `lot_id BIGINT UNSIG
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `event_type` | VARCHAR(24) | Non | `demarrage`, `avancement`, `arret`, `reprise`, `observation`, `visite` |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `event_date` | DATETIME | Non | Date de l'événement |
 | `progress_percent` | DECIMAL(5,2) | Oui | Avancement physique |
 | `work_amount` | DECIMAL(15,2) | Oui | Montant exécuté |
@@ -568,6 +576,7 @@ Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT N
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `situation_number` | VARCHAR(40) | Non | N° situation |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `period_start` | DATE | Non | Début période |
 | `period_end` | DATE | Non | Fin période |
 | `amount_ht` | DECIMAL(15,2) | Non | Montant HT |
@@ -615,6 +624,7 @@ Chaque avenant est rattaché au lot concerné via `lot_id` et une FK composite v
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `amendment_number` | VARCHAR(60) | Non | Référence avenant |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `amendment_date` | DATE | Non | Date |
 | `reason` | TEXT | Non | Motif |
 | `amount_delta` | DECIMAL(15,2) | Oui | Variation financière signée |
@@ -635,6 +645,7 @@ Chaque réception est rattachée au lot concerné via `lot_id` et une FK composi
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `reception_type` | VARCHAR(16) | Non | `provisoire`, `definitive` |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `reception_date` | DATE | Non | Date de réception |
 | `reservations` | TEXT | Oui | Réserves |
 | `reservations_lifted_at` | DATE | Oui | Levée des réserves |
@@ -654,6 +665,7 @@ La clôture est gérée par lot. Ajouter `lot_id` et porter l'unicité de clôtu
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `tracking_end_date` | DATE | Non | Fin du suivi |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot clôturé |
 | `final_settlement_amount` | DECIMAL(15,2) | Oui | Décompte définitif |
 | `retention_released_amount` | DECIMAL(15,2) | Oui | Retenue libérée |
 | `guarantees_returned` | TINYINT(1) | Non | Confirmation restitution |
