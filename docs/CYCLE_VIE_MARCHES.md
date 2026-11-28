@@ -45,7 +45,7 @@ Le résultat ATTRIBUE est conservé pendant la préparation du marché attribué
 - Phase 2 → phase 3
 - Phase 3 → phase 4
 - Phase 4 → phase 5
-- Depuis la phase 5 : décision ATTRIBUE, PERDU, ANNULE ou INFRUCTUEUX.
+- Depuis la phase 5 : un utilisateur autorisé qualifie le résultat ; un utilisateur autorisé valide ou refuse cette proposition. Seule une validation positive rend le résultat officiel.
 - ATTRIBUE : phase 5 → phase 6.
 - Phase 6 → phase 7 lorsque les conditions de démarrage sont réunies.
 - Phase 7 → phase 8 après vérification des éléments de clôture.
@@ -66,11 +66,11 @@ Les champs obligatoires doivent être contrôlés côté serveur, pas uniquement
 
 ## 6. Historique et droits
 
-Chaque transition doit enregistrer au minimum : marché concerné, ancienne phase et ancien statut, nouvelle phase et nouveau statut, utilisateur, date/heure, motif et données justificatives pertinentes.
+Chaque transition, qualification et validation doit enregistrer au minimum : marché concerné, ancienne phase et ancien statut, nouvelle phase et nouveau statut, utilisateur, date/heure, motif et données justificatives pertinentes. Les propositions refusées restent conservées dans l'historique.
 
 Les dossiers PERDU, ANNULE, INFRUCTUEUX et CLOTURE restent visibles en consultation. Leur modification ordinaire est bloquée. Une réouverture exceptionnelle est réservée à GEST et doit être justifiée et journalisée.
 
-Les contrôles d'accès aux marchés et à leurs sociétés restent appliqués à chaque lecture et à chaque action.
+Tous les utilisateurs autorisés sur le marché peuvent faire avancer les phases, qualifier et valider par défaut, sous réserve des restrictions de permissions configurées par GEST. La réouverture exceptionnelle reste réservée à GEST. Les contrôles d'accès aux marchés et à leurs sociétés restent appliqués à chaque lecture et à chaque action.
 
 ## 7. Correspondance avec les anciennes phases
 
@@ -89,9 +89,7 @@ L'ancienne phase 6 est toujours convertie en statut clôturé et nouvelle phase 
 
 ## 8. Compatibilité avec la base actuelle
 
-La migration actuelle définit seulement cinq statuts (en_cours, cloture, gagne, perdu_annule, en_attente) et limite les phases à 1–6. Elle ne permet pas de distinguer séparément PERDU, ANNULE et INFRUCTUEUX, ni d'enregistrer un historique détaillé des transitions.
-
-**Aucune modification SQL n'est effectuée par ce document.** Avant le développement des transitions, une migration devra être préparée et présentée séparément pour validation explicite. Elle devra notamment prévoir les statuts séparés, les phases harmonisées, les données obligatoires des décisions et une table d'historique. Les données existantes devront être converties sans perte.
+Les migrations 003 et 004 préparent les statuts normalisés, les huit phases, les propositions de résultats, leurs validations et le lien vers l'historique. La migration 004 ajoute également les permissions dédiées. Elle doit être installée après sauvegarde et autorisation explicite ; elle n'est pas exécutée automatiquement par l'application.
 
 ## 9. Critères de validation avant mise en production
 
