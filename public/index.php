@@ -585,15 +585,31 @@ try {
 
     if ($marketCompanyIds) {
         $placeholders = implode(',', array_fill(0, count($marketCompanyIds), '?'));
-        $marketQuery = $pdo->prepare(
-            'SELECT m.reference, m.object, m.company_id, c.code AS company_code,
-                    m.lifecycle_status AS status, m.lifecycle_phase AS phase,
-                    m.amount, m.market_date, m.is_demo
-             FROM markets m
-             INNER JOIN companies c ON c.id = m.company_id
-             WHERE m.company_id IN (' . $placeholders . ')
-             ORDER BY m.market_date DESC, m.id DESC'
-        );
+        if (MarketLifecycle::lotsSchemaReady($pdo)) {
+            $marketQuery = $pdo->prepare(
+                'SELECT m.reference, m.object, m.company_id, c.code AS company_code,
+                        CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_status) ELSE "multi_lots" END AS status,
+                        CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_phase) ELSE 0 END AS phase,
+                        m.amount, m.market_date, m.is_demo
+                 FROM markets m
+                 INNER JOIN companies c ON c.id = m.company_id
+                 LEFT JOIN market_lots l ON l.market_id = m.id
+                 WHERE m.company_id IN (' . $placeholders . ')
+                 GROUP BY m.id, m.reference, m.object, m.company_id, c.code,
+                          m.amount, m.market_date, m.is_demo
+                 ORDER BY m.market_date DESC, m.id DESC'
+            );
+        } else {
+            $marketQuery = $pdo->prepare(
+                'SELECT m.reference, m.object, m.company_id, c.code AS company_code,
+                        m.lifecycle_status AS status, m.lifecycle_phase AS phase,
+                        m.amount, m.market_date, m.is_demo
+                 FROM markets m
+                 INNER JOIN companies c ON c.id = m.company_id
+                 WHERE m.company_id IN (' . $placeholders . ')
+                 ORDER BY m.market_date DESC, m.id DESC'
+            );
+        }
         $marketQuery->execute($marketCompanyIds);
         $marketRows = $marketQuery->fetchAll();
 
