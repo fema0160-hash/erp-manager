@@ -214,7 +214,8 @@ La décision officielle elle-même reste portée par les entités de qualificati
 | MARKET | possède | MARKET_CONTRACT_PERIOD | 1,N |
 | MARKET_CONTRACT_PERIOD | déclenche | MARKET_ALERT | 0,N |
 | MARKET | possède | MARKET_EXECUTION_EVENT | 0,N |
-| MARKET | possède | MARKET_WORK_SITUATION | 0,N |
+| MARKET_LOT | possède | MARKET_WORK_SITUATION | 0,N |
+| MARKET_WORK_SITUATION | déclenche | MARKET_RETENTION_EVENT | 0,1 |
 | MARKET | possède | MARKET_AMENDMENT | 0,N |
 | MARKET | possède | MARKET_RECEPTION | 0,N |
 | MARKET | possède | MARKET_CLOSURE | 0,1 |
