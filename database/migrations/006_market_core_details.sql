@@ -177,7 +177,7 @@ CREATE TABLE market_details (
             AND (duration_months IS NULL OR duration_months > 0)
             AND (
                 (is_renewable = 0 AND renewal_duration_years IS NULL)
-                OR (is_renewable = 1 AND renewal_duration_years > 0)
+                OR (is_renewable = 1 AND renewal_duration_years IS NOT NULL AND renewal_duration_years > 0)
             )
         ),
     CONSTRAINT chk_market_details_nature
