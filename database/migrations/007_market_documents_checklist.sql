@@ -112,6 +112,16 @@ CREATE TABLE stored_documents (
     CONSTRAINT chk_stored_documents_extension CHECK (extension <> '')
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- La preuve de dépôt est déclarée en 006 ; sa FK est ajoutée maintenant que
+-- stored_documents existe. Le document doit appartenir au même marché/société.
+ALTER TABLE market_submissions
+    ADD KEY idx_market_submissions_proof_document
+        (proof_document_id, market_id, company_id),
+    ADD CONSTRAINT fk_market_submissions_proof_document
+        FOREIGN KEY (proof_document_id, market_id, company_id)
+        REFERENCES stored_documents(id, market_id, company_id)
+        ON UPDATE CASCADE ON DELETE RESTRICT;
+
 -- 3. Checklist : copie figée du modèle dans le dossier marché.
 -- source_template_id et source_template_item_id sont des références historiques
 -- sans FK active : la suppression/évolution d'un modèle ne modifie pas le dossier.
