@@ -103,20 +103,24 @@ function getSubsidiaryBuildingSvgIcon() {
 }
 
 const PHASES = [
-  { num: 1, title: 'Phase 1 · Étape initiale', desc: 'Repérage & DCE', accent: 'border-t-blue-500', textAccent: 'text-blue-700' },
-  { num: 2, title: 'Phase 2 · Préparation', desc: 'Montage dossier', accent: 'border-t-emerald-500', textAccent: 'text-emerald-700' },
-  { num: 3, title: 'Phase 3 · Pour étude', desc: 'Chiffrage & offre', accent: 'border-t-amber-500', textAccent: 'text-amber-700' },
-  { num: 4, title: 'Phase 4 · Présentation', desc: 'Dépôt & soutenance', accent: 'border-t-purple-500', textAccent: 'text-purple-700' },
-  { num: 5, title: 'Phase 5 · Résultat', desc: 'Attribution / Verdict', accent: 'border-t-cyan-500', textAccent: 'text-cyan-700' },
-  { num: 6, title: 'Phase 6 · Archivé', desc: 'Clôture & historique', accent: 'border-t-slate-500', textAccent: 'text-slate-700' }
+  { num: 1, title: 'Phase 1 · Préparation', desc: 'Enregistrement et DCE', accent: 'border-t-blue-500', textAccent: 'text-blue-700' },
+  { num: 2, title: 'Phase 2 · Étude et BPU', desc: 'Analyse et chiffrage', accent: 'border-t-emerald-500', textAccent: 'text-emerald-700' },
+  { num: 3, title: 'Phase 3 · Soumission', desc: 'Préparation du dossier', accent: 'border-t-amber-500', textAccent: 'text-amber-700' },
+  { num: 4, title: 'Phase 4 · Soumis', desc: 'Dépôt de l’offre', accent: 'border-t-purple-500', textAccent: 'text-purple-700' },
+  { num: 5, title: 'Phase 5 · Résultat', desc: 'Attente de décision', accent: 'border-t-cyan-500', textAccent: 'text-cyan-700' },
+  { num: 6, title: 'Phase 6 · Préparation', desc: 'Marché attribué', accent: 'border-t-indigo-500', textAccent: 'text-indigo-700' },
+  { num: 7, title: 'Phase 7 · Exécution', desc: 'Suivi du chantier', accent: 'border-t-orange-500', textAccent: 'text-orange-700' },
+  { num: 8, title: 'Phase 8 · Clôturé', desc: 'Archivage du dossier', accent: 'border-t-slate-500', textAccent: 'text-slate-700' }
 ];
 
 const STATUS_META = {
   en_cours: { label: 'En cours', color: '#2563eb', badgeClass: 'bg-blue-50 text-blue-700 border-blue-200', borderTop: 'border-t-blue-500' },
-  cloture: { label: 'Clôturés', color: '#16a34a', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', borderTop: 'border-t-emerald-500' },
-  gagne: { label: 'Gagnés', color: '#ef4444', badgeClass: 'bg-rose-50 text-rose-700 border-rose-200', borderTop: 'border-t-rose-500' },
-  perdu_annule: { label: 'Perdus / Annulés', color: '#9333ea', badgeClass: 'bg-purple-50 text-purple-700 border-purple-200', borderTop: 'border-t-purple-500' },
-  en_attente: { label: 'En attente', color: '#0891b2', badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200', borderTop: 'border-t-cyan-500' }
+  attribue: { label: 'Attribué', color: '#16a34a', badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200', borderTop: 'border-t-emerald-500' },
+  perdu: { label: 'Perdu', color: '#9333ea', badgeClass: 'bg-purple-50 text-purple-700 border-purple-200', borderTop: 'border-t-purple-500' },
+  annule: { label: 'Annulé', color: '#64748b', badgeClass: 'bg-slate-50 text-slate-700 border-slate-200', borderTop: 'border-t-slate-500' },
+  infructueux: { label: 'Infructueux', color: '#d97706', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200', borderTop: 'border-t-amber-500' },
+  cloture: { label: 'Clôturé / archivé', color: '#0f766e', badgeClass: 'bg-teal-50 text-teal-700 border-teal-200', borderTop: 'border-t-teal-500' },
+  a_qualifier: { label: 'À qualifier', color: '#0891b2', badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200', borderTop: 'border-t-cyan-500' }
 };
 
 const MARCHES_DATA = Array.isArray(ERP_DATA.markets) ? ERP_DATA.markets : [];
@@ -329,17 +333,13 @@ function renderKPIs() {
   const total = scoped.length;
   document.getElementById('totalCountAction').textContent = total;
 
-  const counts = {
-    en_cours: scoped.filter(m => m.status === 'en_cours').length,
-    cloture: scoped.filter(m => m.status === 'cloture').length,
-    gagne: scoped.filter(m => m.status === 'gagne').length,
-    perdu_annule: scoped.filter(m => m.status === 'perdu_annule').length,
-    en_attente: scoped.filter(m => m.status === 'en_attente').length
-  };
+  const counts = Object.fromEntries(
+    Object.keys(STATUS_META).map(key => [key, scoped.filter(m => m.status === key).length])
+  );
 
-  const decided = counts.gagne + counts.perdu_annule;
-  const winRate = decided > 0 ? Math.round((counts.gagne / decided) * 100) + ' %' : '—';
-  const winRateSub = decided > 0 ? `${counts.gagne} gagné(s) sur ${decided} décidé(s)` : 'Aucun marché décidé';
+  const decided = counts.attribue + counts.perdu + counts.annule + counts.infructueux;
+  const winRate = decided > 0 ? Math.round((counts.attribue / decided) * 100) + ' %' : '—';
+  const winRateSub = decided > 0 ? `${counts.attribue} attribué(s) sur ${decided} décidé(s)` : 'Aucun marché décidé';
 
   const cardPadding = state.variant === 'B' ? 'p-3.5' : (state.variant === 'C' ? 'p-5' : 'p-4');
   const numberSize = state.variant === 'C' ? 'text-3xl' : 'text-2xl';
