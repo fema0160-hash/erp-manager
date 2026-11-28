@@ -309,7 +309,10 @@ if ($page === 'marche') {
                     break;
                 }
             }
-            if ($selectedLot === null) $selectedLot = $lots[0];
+            if ($selectedLot === null) {
+                if ($requestedLotId > 0) throw new DomainException('Le lot demandé n’appartient pas à ce marché.');
+                $selectedLot = $lots[0];
+            }
             $selectedLotId = (int) $selectedLot['id'];
             // La vue conserve l'en-tête du marché, mais affiche le cycle du lot sélectionné.
             $market['lifecycle_status'] = $selectedLot['lifecycle_status'];
