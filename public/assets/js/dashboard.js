@@ -120,7 +120,8 @@ const STATUS_META = {
   annule: { label: 'Annulé', color: '#64748b', badgeClass: 'bg-slate-50 text-slate-700 border-slate-200', borderTop: 'border-t-slate-500' },
   infructueux: { label: 'Infructueux', color: '#d97706', badgeClass: 'bg-amber-50 text-amber-700 border-amber-200', borderTop: 'border-t-amber-500' },
   cloture: { label: 'Clôturé / archivé', color: '#0f766e', badgeClass: 'bg-teal-50 text-teal-700 border-teal-200', borderTop: 'border-t-teal-500' },
-  a_qualifier: { label: 'À qualifier', color: '#0891b2', badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200', borderTop: 'border-t-cyan-500' }
+  a_qualifier: { label: 'À qualifier', color: '#0891b2', badgeClass: 'bg-cyan-50 text-cyan-700 border-cyan-200', borderTop: 'border-t-cyan-500' },
+  multi_lots: { label: 'Plusieurs lots', color: '#64748b', badgeClass: 'bg-slate-50 text-slate-700 border-slate-200', borderTop: 'border-t-slate-500' }
 };
 
 const MARCHES_DATA = Array.isArray(ERP_DATA.markets) ? ERP_DATA.markets : [];
@@ -497,7 +498,7 @@ function renderTable() {
               <span>${escapeHtml(company.short)}</span>
             </span>
           </td>
-          <td class="${rowPadding} text-xs font-semibold text-slate-600 whitespace-nowrap">Phase ${m.phase}</td>
+          <td class="${rowPadding} text-xs font-semibold text-slate-600 whitespace-nowrap">${m.phase > 0 ? `Phase ${m.phase}` : "Phases indépendantes"}</td>
           <td class="${rowPadding} whitespace-nowrap">
             <span class="text-xs font-semibold px-2.5 py-1 rounded-full border ${statusMeta.badgeClass}">
               ${statusMeta.label}
