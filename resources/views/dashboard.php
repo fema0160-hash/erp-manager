@@ -182,10 +182,10 @@
 
         <section aria-labelledby="lifecycleTitle" class="print-break-inside-avoid">
           <div class="flex items-center justify-between mb-3">
-            <div class="flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-[#0f294a]"></span><h3 id="lifecycleTitle" class="text-base sm:text-lg font-bold text-slate-900">Cycle de vie des marchés (6 phases)</h3></div>
+            <div class="flex items-center gap-2"><span class="w-1.5 h-5 rounded-full bg-[#0f294a]"></span><h3 id="lifecycleTitle" class="text-base sm:text-lg font-bold text-slate-900">Cycle de vie des marchés (8 phases)</h3></div>
             <span id="activePhaseFilterLabel" class="text-xs font-medium text-slate-500">Toutes les phases</span>
           </div>
-          <div id="lifecycleGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3.5"></div>
+          <div id="lifecycleGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5"></div>
         </section>
 
         <section id="analysisAndTableGrid" class="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
