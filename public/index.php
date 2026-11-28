@@ -331,7 +331,7 @@ if ($page === 'marche') {
                     throw new DomainException('Vous ne disposez pas du droit de créer un lot.');
                 }
                 $newLotId = MarketLifecycle::createLot(
-                    $pdo, $marketId, (string) ($_POST['lot_label'] ?? ''),
+                    $pdo, $marketId, (string) ($_POST['lot_label'] ?? ''), $userId,
                     (string) ($_POST['lot_reference'] ?? '')
                 );
                 header('Location: ?page=marche&id=' . $marketId . '&lot_id=' . $newLotId . '&success=1');
