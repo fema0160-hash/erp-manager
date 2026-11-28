@@ -120,18 +120,77 @@ Points techniques à vérifier sur une copie MariaDB avant installation :
 5. Nombre de sociétés et présence du compte `gest` avant l'initialisation des paramètres 006.
 6. Reprise contrôlée si un DDL échoue après un commit implicite.
 
-## 6. Écarts encore à traiter dans les prochaines migrations
+## 6. Relecture statique des migrations 005 à 011
 
-| Domaine | Travail SQL restant |
-|---|---|
-| Documents | `stored_documents`, modèles documentaires, checklist, historique des coches |
-| Cautions | cautions successives, numéros de séquence, lien de remplacement et pièces |
-| Retenue | événements append-only par situation validée, calcul TTC et plafond cumulé |
-| BPU | versions, lignes, imports, calcul HT/TVA/TTC et verrouillage par lot |
-| Contrat | périodes, renouvellements, alertes et règles de non-chevauchement |
-| Exécution | événements chantier, situations de travaux, avenants, réceptions et clôture par lot |
+### Corrections apportées pendant cette passe
 
-Ces scripts ne sont pas déclarés prêts tant que leurs clés composites et dépendances documentaires n'ont pas été relues et testées.
+- Migration 005 : harmonisation du nom du montant attribué avec le MLD (market_lots.awarded_amount).
+- Migration 005 : copie de l'ancien markets.awarded_amount vers le lot n° 1 pour préserver le montant historique lorsque le marché n'avait qu'un lot.
+- MLD : ajout du pointeur market_lots.official_result_qualification_id, cohérent avec la FK composite créée en 005.
+- Plan : inventaire des scripts 007 à 011 et de leurs dépendances mis à jour.
+
+### Migration 007 — documents et checklist
+
+Fichier : database/migrations/007_market_documents_checklist.sql.
+
+- Crée les modèles et lignes de modèles par société.
+- Crée les métadonnées de fichiers privés, avec clé de stockage unique, empreinte SHA-256, taille et corbeille logique.
+- Crée les copies figées de checklist au niveau du marché.
+- Crée l'historique des coches/décoches avec FK composite vers la ligne checklist.
+- Ajoute des triggers interdisant UPDATE et DELETE sur l'historique.
+- Les fichiers physiques restent hors webroot ; aucun stockage physique n'est créé par le SQL.
+
+### Migration 008 — cautions successives
+
+Fichier : database/migrations/008_market_guarantees.sql.
+
+- Chaque caution est liée à un lot, un marché et une société par FK composite.
+- L'unicité porte sur lot/type/numéro de séquence ; plusieurs cautions provisoires et définitives sont possibles.
+- Le lien de remplacement est composite et vise une caution du même lot/marché/société.
+- Les justificatifs sont liés à un document du même marché et de la même société.
+- La prévention des cycles de remplacement reste une règle du service métier.
+
+### Migration 009 — BPU
+
+Fichier : database/migrations/009_market_bpu.sql.
+
+- Versions BPU et lignes sont liées au lot et à la société.
+- Les montants HT, TVA et TTC sont en DECIMAL et le taux de TVA est stocké par ligne.
+- Les imports conservent les compteurs de lignes et le document de rapport d'erreurs.
+- Une seule version finale active par lot et le verrouillage des versions finalisées restent des règles transactionnelles applicatives.
+
+### Migration 010 — périodes et alertes
+
+Fichier : database/migrations/010_market_contract_periods_alerts.sql.
+
+- Les périodes sont indépendantes par lot ; les références documentaires sont composites.
+- Les règles d'alerte sont configurées par société.
+- Les occurrences relient, si renseignés, la période ou la caution du même lot/marché/société.
+- La clé de dédoublonnage est unique.
+- Aucun envoi automatique n'est fourni par le SQL : un cron/worker reste à développer.
+
+### Migration 011 — exécution, retenues et clôture
+
+Fichier : database/migrations/011_market_execution_retention_closure.sql.
+
+- Événements de chantier, situations, avenants, réceptions et clôtures sont liés au lot et à la société.
+- Une situation possède une référence unique par lot.
+- Un événement de retenue au maximum par situation est imposé par UNIQUE(work_situation_id).
+- Le calcul TTC et le plafond cumulé sont protégés par des CHECK de ligne ; le verrouillage du lot et le calcul du cumul restent transactionnels dans le service.
+- Les événements de retenue sont protégés par triggers UPDATE/DELETE.
+- Une clôture unique est permise par lot.
+
+### Points de contrôle encore obligatoires avant tout usage
+
+1. Tester chaque fichier SQL sur une copie de MariaDB 10.4.32 ; aucune exécution réelle n'a été faite pendant cette revue.
+2. Vérifier le support de DELIMITER et des triggers dans le mode d'import retenu (phpMyAdmin/CLI), puis tester leur création et leur comportement.
+3. Vérifier les contraintes CHECK, REGEXP, clés étrangères composites et auto-références sur la version exacte de MariaDB.
+4. Tester les migrations dans l'ordre 005 → 011 avec données représentatives, y compris marchés multi-lots, lots sans attribution, cautions remplacées, import BPU partiel et situations successives.
+5. Vérifier le comportement en cas d'échec au milieu d'une migration : les DDL MariaDB peuvent provoquer des commits implicites ; prévoir une procédure de reprise par étape.
+6. Développer et tester les transactions applicatives, les verrouillages SELECT ... FOR UPDATE, les droits, le filtrage multi-sociétés et les verrous des phases.
+7. Réaliser un test de restauration de sauvegarde avant de proposer une installation.
+
+**Conclusion de la relecture :** les scripts 007 à 011 existent maintenant comme brouillons structurés et les écarts connus entre le champ de montant du lot et le MLD ont été corrigés. Cette relecture est statique ; elle ne constitue ni une validation d'exécution SQL ni une autorisation d'installation.
 
 ## 7. Ordre de déploiement proposé
 
