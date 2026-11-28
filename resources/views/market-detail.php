@@ -54,7 +54,7 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
 <?php if (!$schemaReady): ?>
   <section class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
     <strong>Migration 004 requise.</strong>
-    La fiche est consultable, mais les transitions, qualifications, validations et l'historique détaillé ne sont pas activés. Installez d'abord la migration 004 après sauvegarde et autorisation explicite.
+    La fiche et les transitions des phases 1 à 5 restent disponibles. Les qualifications, validations et phases 6 à 8 nécessitent la migration 004, à installer après sauvegarde et autorisation explicite.
   </section>
 <?php endif; ?>
 
@@ -184,7 +184,6 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
     </table></div>
   <?php endif; ?>
 </section>
-</div>
 
 <script>
 (() => {
