@@ -390,6 +390,20 @@ final class MarketLifecycle
         PDO $pdo, int $marketId, string $action, ?string $fromStatus, ?int $fromPhase,
         string $toStatus, int $toPhase, int $userId, string $reason, ?int $qualificationId = null
     ): void {
+        if ($qualificationId === null) {
+            // Conserve la création et les transitions simples compatibles avec le schéma 003.
+            $q = $pdo->prepare(
+                'INSERT INTO market_transitions
+                    (market_id, action_type, from_status, from_phase, to_status, to_phase, changed_by, reason)
+                 VALUES (:market_id, :action, :from_status, :from_phase, :to_status, :to_phase, :user_id, :reason)'
+            );
+            $q->execute([
+                'market_id' => $marketId, 'action' => $action, 'from_status' => $fromStatus,
+                'from_phase' => $fromPhase, 'to_status' => $toStatus, 'to_phase' => $toPhase,
+                'user_id' => $userId, 'reason' => $reason !== '' ? $reason : null,
+            ]);
+            return;
+        }
         $q = $pdo->prepare(
             'INSERT INTO market_transitions
                 (market_id, action_type, from_status, from_phase, to_status, to_phase,
