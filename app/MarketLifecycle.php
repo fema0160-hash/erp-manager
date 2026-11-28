@@ -348,25 +348,29 @@ final class MarketLifecycle
         return $q->fetch() ?: null;
     }
 
-    public static function history(PDO $pdo, int $marketId, bool $includeQualificationDetails = true): array
+    public static function history(PDO $pdo, int $marketId, bool $includeQualificationDetails = true, ?int $lotId = null): array
     {
+        $lotFilter = $lotId !== null ? ' AND t.lot_id = :lot_id' : '';
         $sql = $includeQualificationDetails
             ? 'SELECT t.*, u.display_name AS actor_name, q.result_code
                FROM market_transitions t
                LEFT JOIN users u ON u.id = t.changed_by
                LEFT JOIN market_result_qualifications q ON q.id = t.qualification_id
-               WHERE t.market_id = :market_id ORDER BY t.changed_at DESC, t.id DESC'
+               WHERE t.market_id = :market_id' . $lotFilter . ' ORDER BY t.changed_at DESC, t.id DESC'
             : 'SELECT t.*, u.display_name AS actor_name, NULL AS result_code
                FROM market_transitions t
                LEFT JOIN users u ON u.id = t.changed_by
-               WHERE t.market_id = :market_id ORDER BY t.changed_at DESC, t.id DESC';
+               WHERE t.market_id = :market_id' . $lotFilter . ' ORDER BY t.changed_at DESC, t.id DESC';
+        $params = ['market_id' => $marketId];
+        if ($lotId !== null) $params['lot_id'] = $lotId;
         $q = $pdo->prepare($sql);
-        $q->execute(['market_id' => $marketId]);
+        $q->execute($params);
         return $q->fetchAll();
     }
 
-    public static function qualifications(PDO $pdo, int $marketId): array
+    public static function qualifications(PDO $pdo, int $marketId, ?int $lotId = null): array
     {
+        $lotFilter = $lotId !== null ? ' AND q.lot_id = :lot_id' : '';
         $q = $pdo->prepare(
             'SELECT q.*, qu.display_name AS qualified_by_name,
                     v.validation_decision, v.validation_reason, v.validated_at,
@@ -375,10 +379,307 @@ final class MarketLifecycle
              INNER JOIN users qu ON qu.id = q.qualified_by
              LEFT JOIN market_result_validations v ON v.qualification_id = q.id
              LEFT JOIN users vu ON vu.id = v.validated_by
-             WHERE q.market_id = :market_id ORDER BY q.qualified_at DESC, q.id DESC'
+             WHERE q.market_id = :market_id' . $lotFilter . ' ORDER BY q.qualified_at DESC, q.id DESC'
+        );
+        $params = ['market_id' => $marketId];
+        if ($lotId !== null) $params['lot_id'] = $lotId;
+        $q->execute($params);
+        return $q->fetchAll();
+    }
+
+    /** Détecte le schéma de lots sans supposer que la migration 005 est installée. */
+    public static function lotsSchemaReady(PDO $pdo): bool
+    {
+        $q = $pdo->query(
+            "SELECT
+                (SELECT COUNT(*) FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'market_lots') AS table_count,
+                (SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND ((TABLE_NAME = 'market_result_qualifications' AND COLUMN_NAME IN ('lot_id', 'company_id'))
+                     OR (TABLE_NAME = 'market_transitions' AND COLUMN_NAME IN ('lot_id', 'company_id')))) AS column_count"
+        );
+        $state = $q->fetch();
+        return (int) ($state['table_count'] ?? 0) === 1
+            && (int) ($state['column_count'] ?? 0) === 4;
+    }
+
+    /** Liste les lots d'un marché, uniquement après détection complète du schéma 005. */
+    public static function lots(PDO $pdo, int $marketId): array
+    {
+        if (!self::lotsSchemaReady($pdo)) return [];
+        $q = $pdo->prepare(
+            'SELECT id, market_id, company_id, lot_number, lot_reference, lot_label,
+                    lifecycle_status, lifecycle_phase, awarded_amount,
+                    official_result_qualification_id, created_at, updated_at
+             FROM market_lots WHERE market_id = :market_id ORDER BY lot_number, id'
         );
         $q->execute(['market_id' => $marketId]);
         return $q->fetchAll();
+    }
+
+    /** Crée un lot indépendant en phase 1. Le marché parent reste inchangé. */
+    public static function createLot(PDO $pdo, int $marketId, string $label, ?string $reference = null): int
+    {
+        if (!self::lotsSchemaReady($pdo)) {
+            throw new DomainException('La gestion des lots nécessite la migration 005.');
+        }
+        $label = trim($label);
+        $reference = $reference !== null ? trim($reference) : null;
+        if ($label === '' || mb_strlen($label) > 180 || ($reference !== null && mb_strlen($reference) > 100)) {
+            throw new InvalidArgumentException('Le libellé du lot est obligatoire et limité à 180 caractères.');
+        }
+
+        return self::transaction($pdo, function () use ($pdo, $marketId, $label, $reference): int {
+            $q = $pdo->prepare('SELECT id, company_id FROM markets WHERE id = :id FOR UPDATE');
+            $q->execute(['id' => $marketId]);
+            $market = $q->fetch();
+            if (!$market) throw new DomainException('Marché introuvable.');
+
+            $next = $pdo->prepare('SELECT COALESCE(MAX(lot_number), 0) + 1 FROM market_lots WHERE market_id = :market_id');
+            $next->execute(['market_id' => $marketId]);
+            $number = (int) $next->fetchColumn();
+            if ($number < 1 || $number > 65535) throw new DomainException('Le nombre maximal de lots est atteint.');
+
+            $insert = $pdo->prepare(
+                "INSERT INTO market_lots
+                    (market_id, company_id, lot_number, lot_reference, lot_label, lifecycle_status, lifecycle_phase)
+                 VALUES (:market_id, :company_id, :lot_number, :lot_reference, :lot_label, 'en_cours', 1)"
+            );
+            $insert->execute([
+                'market_id' => $marketId, 'company_id' => (int) $market['company_id'],
+                'lot_number' => $number, 'lot_reference' => $reference !== '' ? $reference : null,
+                'lot_label' => $label,
+            ]);
+            return (int) $pdo->lastInsertId();
+        });
+    }
+
+    /** Progression indépendante d'un lot, avec verrouillage transactionnel de sa ligne. */
+    public static function advanceLotPhase(
+        PDO $pdo, int $marketId, int $lotId, int $userId, string $reason = '', bool $closureConfirmed = false
+    ): void {
+        self::transaction($pdo, function () use ($pdo, $marketId, $lotId, $userId, $reason, $closureConfirmed): void {
+            $lot = self::lockLot($pdo, $marketId, $lotId);
+            $phase = (int) $lot['lifecycle_phase'];
+            $status = (string) $lot['lifecycle_status'];
+
+            if (in_array($phase, [1, 2, 3, 4], true) && $status === 'en_cours') {
+                $nextPhase = $phase + 1;
+                $action = 'phase';
+            } elseif ($phase === 6 && $status === 'attribue') {
+                if (mb_strlen(trim($reason)) < 5) {
+                    throw new InvalidArgumentException('Indiquez les conditions de démarrage avant le passage en exécution.');
+                }
+                $nextPhase = 7;
+                $action = 'demarrage';
+            } elseif ($phase === 7 && $status === 'attribue') {
+                if (!$closureConfirmed || mb_strlen(trim($reason)) < 10) {
+                    throw new InvalidArgumentException('Confirmez la complétude du dossier et décrivez les pièces contrôlées (10 caractères minimum).');
+                }
+                $nextPhase = 8;
+                $action = 'cloture';
+                $status = 'cloture';
+            } else {
+                throw new DomainException('Cette transition n’est pas autorisée pour le statut et la phase de ce lot.');
+            }
+
+            $update = $pdo->prepare(
+                'UPDATE market_lots SET lifecycle_status = :status, lifecycle_phase = :phase
+                 WHERE id = :lot_id AND market_id = :market_id'
+            );
+            $update->execute(['status' => $status, 'phase' => $nextPhase, 'lot_id' => $lotId, 'market_id' => $marketId]);
+            self::insertLotHistory(
+                $pdo, $lot, $action, (string) $lot['lifecycle_status'], $phase, $status, $nextPhase,
+                $userId, trim($reason) !== '' ? trim($reason) : 'Passage à la phase suivante.'
+            );
+        });
+    }
+
+    /** Enregistre une proposition de résultat pour un lot uniquement. */
+    public static function qualifyLotResult(PDO $pdo, int $marketId, int $lotId, int $userId, array $data): int
+    {
+        return self::transaction($pdo, function () use ($pdo, $marketId, $lotId, $userId, $data): int {
+            $lot = self::lockLot($pdo, $marketId, $lotId);
+            if ((int) $lot['lifecycle_phase'] !== 5
+                || !in_array((string) $lot['lifecycle_status'], ['en_cours', 'a_qualifier'], true)) {
+                throw new DomainException('La qualification est possible uniquement en phase 5 de ce lot.');
+            }
+
+            $pending = $pdo->prepare(
+                'SELECT q.id FROM market_result_qualifications q
+                 LEFT JOIN market_result_validations v ON v.qualification_id = q.id
+                 WHERE q.market_id = :market_id AND q.lot_id = :lot_id AND v.id IS NULL LIMIT 1'
+            );
+            $pending->execute(['market_id' => $marketId, 'lot_id' => $lotId]);
+            if ($pending->fetchColumn()) throw new DomainException('Une qualification de ce lot attend déjà sa validation.');
+
+            $result = (string) ($data['result_code'] ?? '');
+            if (!in_array($result, ['attribue', 'perdu', 'annule', 'infructueux'], true)) {
+                throw new InvalidArgumentException('Sélectionnez un résultat valide.');
+            }
+            $decisionDate = trim((string) ($data['decision_date'] ?? ''));
+            $decisionReason = trim((string) ($data['decision_reason'] ?? ''));
+            $winner = trim((string) ($data['winner_company_name'] ?? ''));
+            $winnerAmount = self::money($data['winner_amount'] ?? null);
+            $observations = trim((string) ($data['decision_observations'] ?? ''));
+            $awardedAmount = self::money($data['awarded_amount'] ?? null);
+
+            if ($result === 'attribue') {
+                self::assertDate($decisionDate, 'La date de décision est obligatoire.');
+                if ($awardedAmount === null) throw new InvalidArgumentException('Le montant attribué est obligatoire et doit être positif ou nul.');
+            } elseif ($result === 'perdu') {
+                if ($winner === '' || mb_strlen($winner) > 180 || $winnerAmount === null || $observations === '') {
+                    throw new InvalidArgumentException('Pour un lot perdu, indiquez le concurrent, son montant et les observations.');
+                }
+            } elseif ($decisionReason === '') {
+                throw new InvalidArgumentException('Le motif est obligatoire pour un lot annulé ou infructueux.');
+            }
+
+            $insert = $pdo->prepare(
+                'INSERT INTO market_result_qualifications
+                    (market_id, lot_id, company_id, result_code, decision_date, decision_reason,
+                     winner_company_name, winner_amount, decision_observations, awarded_amount, qualified_by)
+                 VALUES (:market_id, :lot_id, :company_id, :result_code, :decision_date, :decision_reason,
+                         :winner, :winner_amount, :observations, :awarded_amount, :qualified_by)'
+            );
+            $insert->execute([
+                'market_id' => $marketId, 'lot_id' => $lotId, 'company_id' => (int) $lot['company_id'],
+                'result_code' => $result, 'decision_date' => $decisionDate !== '' ? $decisionDate : null,
+                'decision_reason' => $decisionReason !== '' ? $decisionReason : null,
+                'winner' => $winner !== '' ? $winner : null, 'winner_amount' => $winnerAmount,
+                'observations' => $observations !== '' ? $observations : null,
+                'awarded_amount' => $awardedAmount, 'qualified_by' => $userId,
+            ]);
+            $qualificationId = (int) $pdo->lastInsertId();
+            self::insertLotHistory(
+                $pdo, $lot, 'qualification', (string) $lot['lifecycle_status'], (int) $lot['lifecycle_phase'],
+                (string) $lot['lifecycle_status'], (int) $lot['lifecycle_phase'], $userId,
+                'Résultat proposé pour le lot : ' . $result . '.', $qualificationId
+            );
+            return $qualificationId;
+        });
+    }
+
+    /** Valide une qualification et met à jour uniquement le lot correspondant. */
+    public static function validateLotResult(
+        PDO $pdo, int $marketId, int $lotId, int $qualificationId, int $userId, string $decision, string $reason = ''
+    ): void {
+        self::transaction($pdo, function () use ($pdo, $marketId, $lotId, $qualificationId, $userId, $decision, $reason): void {
+            $lot = self::lockLot($pdo, $marketId, $lotId);
+            if ((int) $lot['lifecycle_phase'] !== 5
+                || !in_array((string) $lot['lifecycle_status'], ['en_cours', 'a_qualifier'], true)) {
+                throw new DomainException('Ce lot ne se trouve plus en attente de résultat.');
+            }
+            $q = $pdo->prepare(
+                'SELECT q.* FROM market_result_qualifications q
+                 WHERE q.id = :qualification_id AND q.market_id = :market_id AND q.lot_id = :lot_id FOR UPDATE'
+            );
+            $q->execute(['qualification_id' => $qualificationId, 'market_id' => $marketId, 'lot_id' => $lotId]);
+            $qualification = $q->fetch();
+            if (!$qualification) throw new DomainException('Cette qualification est introuvable pour ce lot.');
+
+            $already = $pdo->prepare('SELECT id FROM market_result_validations WHERE qualification_id = :id LIMIT 1');
+            $already->execute(['id' => $qualificationId]);
+            if ($already->fetchColumn()) throw new DomainException('Cette qualification a déjà été traitée.');
+            if (!in_array($decision, ['validee', 'refusee'], true)) {
+                throw new InvalidArgumentException('Décision de validation invalide.');
+            }
+            if ($decision === 'refusee' && trim($reason) === '') {
+                throw new InvalidArgumentException('Le motif du refus est obligatoire.');
+            }
+
+            $validation = $pdo->prepare(
+                'INSERT INTO market_result_validations
+                    (qualification_id, validation_decision, validated_by, validation_reason)
+                 VALUES (:qualification_id, :decision, :user_id, :reason)'
+            );
+            $validation->execute([
+                'qualification_id' => $qualificationId, 'decision' => $decision,
+                'user_id' => $userId, 'reason' => trim($reason) !== '' ? trim($reason) : null,
+            ]);
+
+            $oldStatus = (string) $lot['lifecycle_status'];
+            $oldPhase = (int) $lot['lifecycle_phase'];
+            if ($decision === 'refusee') {
+                self::insertLotHistory(
+                    $pdo, $lot, 'validation_refusee', $oldStatus, $oldPhase, $oldStatus, $oldPhase,
+                    $userId, trim($reason), $qualificationId
+                );
+                return;
+            }
+
+            $newStatus = (string) $qualification['result_code'];
+            $newPhase = $newStatus === 'attribue' ? 6 : 5;
+            $update = $pdo->prepare(
+                'UPDATE market_lots
+                 SET lifecycle_status = :status, lifecycle_phase = :phase,
+                     awarded_amount = :awarded_amount, official_result_qualification_id = :qualification_id
+                 WHERE id = :lot_id AND market_id = :market_id'
+            );
+            $update->execute([
+                'status' => $newStatus, 'phase' => $newPhase, 'awarded_amount' => $qualification['awarded_amount'],
+                'qualification_id' => $qualificationId, 'lot_id' => $lotId, 'market_id' => $marketId,
+            ]);
+            self::insertLotHistory(
+                $pdo, $lot, 'decision', $oldStatus, $oldPhase, $newStatus, $newPhase,
+                $userId, 'Résultat validé pour le lot : ' . $newStatus . '.', $qualificationId
+            );
+        });
+    }
+
+    /** Réouverture d'un lot réservée à GEST, sans effacer ses qualifications historiques. */
+    public static function reopenLot(PDO $pdo, int $marketId, int $lotId, int $userId, string $role, string $reason): void
+    {
+        if ($role !== 'GEST') throw new DomainException('La réouverture est réservée à GEST.');
+        if (mb_strlen(trim($reason)) < 10) throw new InvalidArgumentException('Le motif de réouverture doit contenir au moins 10 caractères.');
+        self::transaction($pdo, function () use ($pdo, $marketId, $lotId, $userId, $reason): void {
+            $lot = self::lockLot($pdo, $marketId, $lotId);
+            $status = (string) $lot['lifecycle_status'];
+            $phase = (int) $lot['lifecycle_phase'];
+            if (!in_array($status, ['attribue', 'perdu', 'annule', 'infructueux', 'cloture'], true) && $phase !== 8) {
+                throw new DomainException('Ce lot ne nécessite pas de réouverture.');
+            }
+            $update = $pdo->prepare(
+                "UPDATE market_lots SET lifecycle_status = 'en_cours', lifecycle_phase = 5,
+                    official_result_qualification_id = NULL, awarded_amount = NULL
+                 WHERE id = :lot_id AND market_id = :market_id"
+            );
+            $update->execute(['lot_id' => $lotId, 'market_id' => $marketId]);
+            self::insertLotHistory($pdo, $lot, 'reopen', $status, $phase, 'en_cours', 5, $userId, trim($reason));
+        });
+    }
+
+    private static function lockLot(PDO $pdo, int $marketId, int $lotId): array
+    {
+        $q = $pdo->prepare(
+            'SELECT id, market_id, company_id, lot_number, lot_label, lifecycle_status, lifecycle_phase
+             FROM market_lots WHERE id = :lot_id AND market_id = :market_id FOR UPDATE'
+        );
+        $q->execute(['lot_id' => $lotId, 'market_id' => $marketId]);
+        $lot = $q->fetch();
+        if (!$lot) throw new DomainException('Lot introuvable pour ce marché.');
+        return $lot;
+    }
+
+    private static function insertLotHistory(
+        PDO $pdo, array $lot, string $action, ?string $fromStatus, ?int $fromPhase,
+        string $toStatus, int $toPhase, int $userId, string $reason, ?int $qualificationId = null
+    ): void {
+        $q = $pdo->prepare(
+            'INSERT INTO market_transitions
+                (market_id, lot_id, company_id, action_type, from_status, from_phase,
+                 to_status, to_phase, changed_by, reason, qualification_id)
+             VALUES (:market_id, :lot_id, :company_id, :action, :from_status, :from_phase,
+                     :to_status, :to_phase, :user_id, :reason, :qualification_id)'
+        );
+        $q->execute([
+            'market_id' => (int) $lot['market_id'], 'lot_id' => (int) $lot['id'],
+            'company_id' => (int) $lot['company_id'], 'action' => $action,
+            'from_status' => $fromStatus, 'from_phase' => $fromPhase, 'to_status' => $toStatus,
+            'to_phase' => $toPhase, 'user_id' => $userId,
+            'reason' => $reason !== '' ? $reason : null, 'qualification_id' => $qualificationId,
+        ]);
     }
 
     private static function lockMarket(PDO $pdo, int $marketId): array
