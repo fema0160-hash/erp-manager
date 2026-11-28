@@ -436,18 +436,18 @@ final class MarketLifecycle
     }
 
     /** Crée un lot indépendant en phase 1. Le marché parent reste inchangé. */
-    public static function createLot(PDO $pdo, int $marketId, string $label, ?string $reference = null): int
+    public static function createLot(PDO $pdo, int $marketId, string $label, int $userId, ?string $reference = null): int
     {
         if (!self::lotsSchemaReady($pdo)) {
             throw new DomainException('La gestion des lots nécessite la migration 005.');
         }
         $label = trim($label);
         $reference = $reference !== null ? trim($reference) : null;
-        if ($label === '' || mb_strlen($label) > 180 || ($reference !== null && mb_strlen($reference) > 100)) {
+        if ($userId < 1 || $label === '' || mb_strlen($label) > 180 || ($reference !== null && mb_strlen($reference) > 100)) {
             throw new InvalidArgumentException('Le libellé du lot est obligatoire et limité à 180 caractères.');
         }
 
-        return self::transaction($pdo, function () use ($pdo, $marketId, $label, $reference): int {
+        return self::transaction($pdo, function () use ($pdo, $marketId, $label, $userId, $reference): int {
             $q = $pdo->prepare('SELECT id, company_id FROM markets WHERE id = :id FOR UPDATE');
             $q->execute(['id' => $marketId]);
             $market = $q->fetch();
@@ -472,7 +472,7 @@ final class MarketLifecycle
             self::insertLotHistory(
                 $pdo,
                 ['id' => $lotId, 'market_id' => $marketId, 'company_id' => (int) $market['company_id']],
-                'creation_lot', null, null, 'en_cours', 1, 0, 'Création du lot n° ' . $number . '.'
+                'creation_lot', null, null, 'en_cours', 1, $userId, 'Création du lot n° ' . $number . '.'
             );
             return $lotId;
         });
