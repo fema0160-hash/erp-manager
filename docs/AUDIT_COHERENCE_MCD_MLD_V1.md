@@ -197,7 +197,8 @@ Fichier : database/migrations/011_market_execution_retention_closure.sql.
 ### Vérifications statiques réalisées
 
 - Relecture des définitions de tables, colonnes, index uniques et clés étrangères composites des migrations 005 à 011.
-- Contrôle des clés candidates référencées : les FK composites examinées disposent d'une clé UNIQUE correspondante dans l'ordre des colonnes attendu (lots, qualifications, transitions, documents, cautions, BPU, périodes, alertes, situations et retenues).
+- Contrôle statique automatisé des clés candidates : 87 déclarations de clés étrangères recensées dans les migrations 001 à 011 ; chacune correspond à une clé primaire ou UNIQUE cible avec les colonnes dans le même ordre. Ce contrôle porte sur le texte SQL et ne remplace pas un import réel dans MariaDB.
+- Contrôle des dépendances et des clés composites pour les lots, qualifications, transitions, documents, cautions, BPU, périodes, alertes, situations et retenues.
 - Contrôle de la dépendance d'ordre : 005 exige 004 ; 006 exige 005 ; 007 crée les documents avant les FK documentaires ; 008 à 011 s'appuient sur les tables créées précédemment.
 - Aucun script n'a été importé dans MariaDB pendant cet audit. La vérification de syntaxe réelle, des triggers et des CHECK reste à faire sur une copie MariaDB 10.4.32.
 
