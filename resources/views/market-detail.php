@@ -51,6 +51,104 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
   </div>
 </section>
 
+<?php
+$phaseStates = [];
+foreach ($phaseLabels as $phaseNumber => $phaseLabel) {
+    $isClosed = $status === 'cloture' && $phase === 8;
+    $isNegativeResult = in_array($status, ['perdu', 'annule', 'infructueux'], true) && $phase === 5;
+    $isDone = $phase > $phaseNumber || ($phaseNumber === 5 && $isNegativeResult) || $isClosed;
+    $phaseStates[$phaseNumber] = $isDone ? 'done' : ($phase === $phaseNumber ? 'current' : 'upcoming');
+}
+$decisionCards = [
+    ['code' => 'attribue', 'title' => 'Attribué', 'description' => 'Poursuite vers la phase 6', 'action' => 'Continuer'],
+    ['code' => 'perdu', 'title' => 'Perdu', 'description' => 'Fin du parcours normal', 'action' => 'Terminé'],
+    ['code' => 'annule', 'title' => 'Annulé', 'description' => 'Fin du parcours normal', 'action' => 'Terminé'],
+    ['code' => 'infructueux', 'title' => 'Infructueux', 'description' => 'Fin du parcours normal', 'action' => 'Terminé'],
+];
+?>
+<section class="rounded-2xl bg-white border border-slate-200 p-5 sm:p-6 shadow-sm" aria-label="Cycle de vie du marché">
+  <div class="flex flex-wrap items-center justify-between gap-2 mb-5">
+    <h3 class="font-extrabold text-[#0f294a]">Cycle de vie du marché</h3>
+    <span class="rounded-full bg-blue-50 text-blue-800 px-3 py-1.5 text-xs font-bold">
+      <?= $phase >= 1 && $phase <= 8 ? 'Phase ' . str_pad((string) $phase, 2, '0', STR_PAD_LEFT) . ' — ' . $h($phaseLabels[$phase] ?? '') : 'Phase inconnue' ?>
+    </span>
+  </div>
+
+  <div class="overflow-x-auto pb-2" role="region" aria-label="Les huit phases, défilement horizontal possible">
+    <div class="grid grid-cols-8 gap-2 min-w-[900px] lg:min-w-0">
+      <?php foreach ($phaseLabels as $phaseNumber => $phaseLabel): ?>
+        <?php
+          $visualState = $phaseStates[$phaseNumber];
+          $circleClass = $visualState === 'done'
+              ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+              : ($visualState === 'current'
+                  ? 'bg-blue-100 text-blue-800 border-blue-500 ring-2 ring-blue-100'
+                  : 'bg-slate-100 text-slate-500 border-slate-200');
+          $labelClass = $visualState === 'done'
+              ? 'text-emerald-800'
+              : ($visualState === 'current' ? 'text-blue-800' : 'text-slate-500');
+          $stateLabel = $visualState === 'done' ? 'Terminée' : ($visualState === 'current' ? 'En cours' : 'À venir');
+          $symbol = $visualState === 'done' ? '✓' : ($visualState === 'current' ? '●' : '○');
+        ?>
+        <div class="min-w-0 text-center flex flex-col items-center">
+          <span class="flex h-9 w-9 items-center justify-center rounded-full border-2 text-sm font-extrabold <?= $circleClass ?>" aria-label="<?= $h($stateLabel) ?>">
+            <?= $symbol ?>
+          </span>
+          <span class="mt-2 text-sm font-extrabold <?= $labelClass ?>"><?= str_pad((string) $phaseNumber, 2, '0', STR_PAD_LEFT) ?></span>
+          <span class="mt-1 min-h-[2.6rem] text-[11px] leading-tight font-semibold text-slate-700 break-words"><?= $h($phaseLabel) ?></span>
+          <span class="mt-1 text-[10px] font-semibold <?= $labelClass ?>"><?= $h($stateLabel) ?></span>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+
+  <div class="mt-5 border-t border-slate-100 pt-4">
+    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+      <h4 class="text-sm font-extrabold uppercase tracking-wide text-slate-700">Décision après la phase 5</h4>
+      <?php if ($phase < 5): ?>
+        <span class="text-xs text-slate-500">Disponible à partir de la phase 5</span>
+      <?php elseif (in_array($status, ['attribue', 'perdu', 'annule', 'infructueux'], true)): ?>
+        <span class="text-xs font-semibold text-emerald-700">Résultat officiel enregistré</span>
+      <?php else: ?>
+        <span class="text-xs text-slate-500">En attente de qualification et de validation</span>
+      <?php endif; ?>
+    </div>
+    <div class="overflow-x-auto pb-2" role="region" aria-label="Les quatre décisions, défilement horizontal possible">
+      <div class="grid grid-cols-4 gap-2 min-w-[680px] lg:min-w-0">
+        <?php foreach ($decisionCards as $decision): ?>
+          <?php
+            $selected = $status === $decision['code'];
+            $decisionStyle = $selected
+                ? ($decision['code'] === 'attribue'
+                    ? 'border-emerald-400 bg-emerald-50'
+                    : 'border-amber-400 bg-amber-50')
+                : 'border-slate-200 bg-slate-50';
+            $decisionIcon = $decision['code'] === 'attribue' ? '✓'
+                : ($decision['code'] === 'perdu' ? '×'
+                    : ($decision['code'] === 'annule' ? '⊘' : '!'));
+            $decisionIconStyle = $decision['code'] === 'attribue'
+                ? 'text-emerald-700 bg-emerald-100'
+                : 'text-slate-600 bg-white';
+          ?>
+          <div class="min-w-0 rounded-xl border p-3 <?= $decisionStyle ?> <?= $phase < 5 && !$selected ? 'opacity-60' : '' ?>">
+            <div class="flex items-center gap-2">
+              <span class="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-base font-extrabold <?= $decisionIconStyle ?>"><?= $decisionIcon ?></span>
+              <span class="text-sm font-extrabold text-slate-900"><?= $h($decision['title']) ?></span>
+            </div>
+            <p class="mt-2 min-h-[2.2rem] text-xs leading-snug text-slate-600"><?= $h($decision['description']) ?></p>
+            <div class="mt-2 flex flex-wrap items-center gap-1.5">
+              <span class="rounded-full bg-white/80 px-2 py-1 text-[10px] font-bold text-slate-700"><?= $h($decision['action']) ?></span>
+              <?php if ($selected): ?>
+                <span class="rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold text-emerald-800">Décision validée</span>
+              <?php endif; ?>
+            </div>
+          </div>
+        <?php endforeach; ?>
+      </div>
+    </div>
+  </div>
+</section>
+
 <?php if (!$schemaReady): ?>
   <section class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
     <strong>Migration 004 requise.</strong>
