@@ -222,7 +222,7 @@ Index et contraintes :
 - UNIQUE `(id, lot_id, market_id, company_id)`.
 - FK composite `(lot_id, market_id, company_id)` vers `market_lots(id, market_id, company_id)`.
 - CHECK taux entre 0 et 100 ; base et plafond TTC >= 0.
-- Le montant attribué reste la donnée officielle issue de la qualification validée et du champ existant `markets.awarded_amount`. Toute copie éventuelle dans cette table doit être supprimée de la conception finale pour éviter deux valeurs concurrentes.
+- Le montant attribué reste la donnée officielle issue de la qualification validée et du champ `markets.awarded_amount`, recopié dans `market_lots.awarded_amount` pour le lot. `retention_base_amount_ttc` et `retention_cap_amount_ttc` sont des instantanés de calcul figés à l'attribution, pas des montants d'attribution modifiables concurrents. **Point bloquant avant activation de la retenue :** le code et la saisie doivent garantir que `awarded_amount` représente bien le TTC attribué ; le nom actuel de la colonne ne précise pas HT/TTC.
 
 ## 5. Cautions et garanties
 
@@ -254,7 +254,7 @@ Plusieurs cautions successives de chaque type peuvent être conservées pour un 
 
 Index et contraintes :
 - UNIQUE `(lot_id, guarantee_type, sequence_number)`.
-- UNIQUE `(id, market_id, company_id)` et clé composite pour l'auto-référence de remplacement.
+- UNIQUE `(id, lot_id, market_id, company_id)` pour l'auto-référence de remplacement.
 - FK composite vers `market_lots(id, market_id, company_id)`.
 - FK composite du document vers `stored_documents`.
 - CHECK montants >= 0.
