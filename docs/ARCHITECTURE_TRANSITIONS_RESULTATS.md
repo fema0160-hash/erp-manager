@@ -125,13 +125,14 @@ Champs envisagés :
 - date et heure ;
 - motif de refus ou commentaire.
 
-Les actions sont ajoutées à l'historique ; elles ne sont pas écrasées par une validation ultérieure.
+Une qualification ne peut recevoir qu'une seule décision finale. L'état est dérivé de la présence et de la valeur de cette décision : sans ligne de validation, elle est en attente ; avec une ligne, elle est validée ou refusée. Après un refus, une nouvelle qualification est créée. Le verrouillage du marché côté serveur empêche plusieurs qualifications simultanément en attente.
 
 ### 6.3 Lien avec le marché officiel et l'historique
 
 - markets conservera les champs du résultat officiel pour la compatibilité avec le code existant.
-- Un lien vers la qualification ayant produit le résultat officiel permettra de retrouver la preuve de validation.
-- market_transitions conservera les changements de phase et de statut et sera reliée, lorsque nécessaire, à la qualification concernée.
+- Un lien vers la qualification ayant produit le résultat officiel permet de retrouver la preuve de validation.
+- market_transitions conserve les changements de phase et de statut et peut être reliée à la qualification concernée.
+- Les clés étrangères composites garantissent que la qualification référencée appartient au même marché.
 - Les événements de qualification et de validation seront historisés même lorsqu'ils ne changent pas encore la phase ou le statut. Dans ce cas, l'état de départ et d'arrivée de l'événement sera identique.
 - Les événements historiques ne seront pas modifiables ni supprimables depuis l'interface ordinaire.
 
@@ -174,7 +175,7 @@ Les contrôles d'autorisation ne doivent jamais dépendre uniquement de l'affich
 
 ## 9. Ordre d'implémentation proposé
 
-1. Préparer et faire approuver la migration de données, sans l'exécuter.
+1. Faire relire et approuver la migration 004, puis l'installer uniquement après autorisation explicite.
 2. Ajouter les méthodes métier de progression des phases 1 à 5.
 3. Ajouter la création d'une qualification et son historique.
 4. Ajouter la validation et le refus, avec application atomique du résultat officiel.
@@ -191,6 +192,7 @@ Les contrôles d'autorisation ne doivent jamais dépendre uniquement de l'affich
 - la création enregistre un événement initial ;
 - les transitions métier, la qualification et la validation ne sont pas encore implémentées ;
 - la migration 003 ne sépare pas les propositions de résultat et leurs validations ;
-- aucune migration supplémentaire n'est créée ou exécutée par le présent document.
+- la migration 004 a été préparée et corrigée dans `database/migrations/004_result_qualification_validation.sql` ;
+- la migration 004 n'a pas été exécutée et attend une approbation explicite.
 
 **Toute création ou exécution d'une nouvelle migration SQL fera l'objet d'une validation explicite préalable.**
