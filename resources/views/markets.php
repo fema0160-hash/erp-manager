@@ -2,6 +2,7 @@
 declare(strict_types=1);
 $h = static fn ($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
 $statusLabels = MarketLifecycle::statusLabels();
+$statusLabels['multi_lots'] = 'Plusieurs lots';
 $phaseLabels = MarketLifecycle::phaseLabels();
 $selectedStatus = (string) ($_GET['status'] ?? '');
 $selectedCompany = (int) ($_GET['company'] ?? 0);
@@ -58,7 +59,7 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
                 <td class="p-3 font-bold text-[#0f294a] whitespace-nowrap"><a href="?page=marche&id=<?= (int) $market['id'] ?>" class="hover:underline"><?= $h($market['reference']) ?></a><?php if ((int) $market['is_demo'] === 1): ?><span class="ml-1 text-[10px] font-semibold text-slate-400">Démo</span><?php endif; ?></td>
                 <td class="p-3 min-w-64"><?= nl2br($h($market['object'])) ?></td>
                 <td class="p-3 whitespace-nowrap"><?= $h($market['company_name']) ?></td>
-                <td class="p-3 whitespace-nowrap"><?= (int) $market['phase'] ?> — <?= $h($phaseLabels[(int) $market['phase']] ?? '') ?></td>
+                <td class="p-3 whitespace-nowrap"><?= (int) $market['phase'] > 0 ? (int) $market['phase'] . ' — ' . $h($phaseLabels[(int) $market['phase']] ?? '') : 'Phases indépendantes' ?></td>
                 <td class="p-3 whitespace-nowrap"><span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"><?= $h($statusLabels[$market['status']] ?? $market['status']) ?></span></td>
                 <td class="p-3 text-right font-semibold whitespace-nowrap"><?= number_format((float) $market['amount'], 2, ',', ' ') ?></td>
                 <td class="p-3 whitespace-nowrap"><?= $h(date('d/m/Y', strtotime((string) $market['market_date']))) ?></td>
