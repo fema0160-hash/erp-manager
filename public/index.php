@@ -484,8 +484,13 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                     $like = '%' . $search . '%';
                     array_push($params, $like, $like, $like);
                 }
+                $lotsSchemaReady = MarketLifecycle::lotsSchemaReady($pdo);
                 if (in_array($statusFilter, MarketLifecycle::statusCodes(), true)) {
-                    $where[] = 'm.lifecycle_status = ?';
+                    if ($lotsSchemaReady) {
+                        $where[] = 'EXISTS (SELECT 1 FROM market_lots lf WHERE lf.market_id = m.id AND lf.lifecycle_status = ?)';
+                    } else {
+                        $where[] = 'm.lifecycle_status = ?';
+                    }
                     $params[] = $statusFilter;
                 }
                 if ($companyFilter > 0 && in_array($companyFilter, $allowedCompanyIds, true)) {
@@ -493,12 +498,26 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                     $params[] = $companyFilter;
                 }
 
-                $sql = 'SELECT m.id, m.reference, m.object, m.company_id, c.name AS company_name,
-                               m.lifecycle_status AS status, m.lifecycle_phase AS phase,
-                               m.amount, m.market_date, m.is_demo
-                        FROM markets m INNER JOIN companies c ON c.id = m.company_id
-                        WHERE ' . implode(' AND ', $where) . '
-                        ORDER BY m.market_date DESC, m.id DESC';
+                if ($lotsSchemaReady) {
+                    $sql = 'SELECT m.id, m.reference, m.object, m.company_id, c.name AS company_name,
+                                   CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_status) ELSE "multi_lots" END AS status,
+                                   CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_phase) ELSE 0 END AS phase,
+                                   COUNT(l.id) AS lot_count,
+                                   m.amount, m.market_date, m.is_demo
+                            FROM markets m INNER JOIN companies c ON c.id = m.company_id
+                            LEFT JOIN market_lots l ON l.market_id = m.id
+                            WHERE ' . implode(' AND ', $where) . '
+                            GROUP BY m.id, m.reference, m.object, m.company_id, c.name,
+                                     m.amount, m.market_date, m.is_demo
+                            ORDER BY m.market_date DESC, m.id DESC';
+                } else {
+                    $sql = 'SELECT m.id, m.reference, m.object, m.company_id, c.name AS company_name,
+                                   m.lifecycle_status AS status, m.lifecycle_phase AS phase, 1 AS lot_count,
+                                   m.amount, m.market_date, m.is_demo
+                            FROM markets m INNER JOIN companies c ON c.id = m.company_id
+                            WHERE ' . implode(' AND ', $where) . '
+                            ORDER BY m.market_date DESC, m.id DESC';
+                }
                 $query = $pdo->prepare($sql);
                 $query->execute($params);
                 $markets = $query->fetchAll();
