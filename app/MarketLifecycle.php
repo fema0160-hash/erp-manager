@@ -404,7 +404,7 @@ final class MarketLifecycle
         return $q->fetchAll();
     }
 
-    /** Détecte le schéma de lots sans supposer que la migration 005 est installée. */
+    /** Détecte une migration 005 complète, pas seulement la présence partielle de ses tables/colonnes. */
     public static function lotsSchemaReady(PDO $pdo): bool
     {
         $q = $pdo->query(
@@ -414,11 +414,28 @@ final class MarketLifecycle
                 (SELECT COUNT(*) FROM information_schema.COLUMNS
                  WHERE TABLE_SCHEMA = DATABASE()
                    AND ((TABLE_NAME = 'market_result_qualifications' AND COLUMN_NAME IN ('lot_id', 'company_id'))
-                     OR (TABLE_NAME = 'market_transitions' AND COLUMN_NAME IN ('lot_id', 'company_id')))) AS column_count"
+                     OR (TABLE_NAME = 'market_transitions' AND COLUMN_NAME IN ('lot_id', 'company_id')))) AS column_count,
+                (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+                 WHERE CONSTRAINT_SCHEMA = DATABASE()
+                   AND CONSTRAINT_NAME IN (
+                       'fk_market_lots_market_company',
+                       'chk_market_lots_number',
+                       'chk_market_lots_phase',
+                       'chk_market_lots_status',
+                       'chk_market_lots_awarded_amount',
+                       'fk_market_result_qualification_lot',
+                       'fk_market_transitions_lot_company',
+                       'fk_market_transitions_qualification_lot',
+                       'fk_market_lots_official_qualification'
+                   )) AS constraint_count"
         );
         $state = $q->fetch();
+
+        // La migration 005 crée 9 contraintes nommées. Si une instruction DDL
+        // a échoué en cours de route, l'application reste en mode pré-migration.
         return (int) ($state['table_count'] ?? 0) === 1
-            && (int) ($state['column_count'] ?? 0) === 4;
+            && (int) ($state['column_count'] ?? 0) === 4
+            && (int) ($state['constraint_count'] ?? 0) === 9;
     }
 
     /** Liste les lots d'un marché, uniquement après détection complète du schéma 005. */
