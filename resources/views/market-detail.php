@@ -216,7 +216,7 @@ $decisionCards = [
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
     <h3 class="font-bold text-slate-900">Préparer le démarrage du marché</h3>
     <p class="text-sm text-slate-600 mt-1">Confirmez les conditions de démarrage avant le passage en phase 7 — Exécution / suivi du chantier.</p>
-    <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-4 flex flex-col sm:flex-row gap-3">
+    <form method="post" action="<?= $h($detailAction) ?>" class="mt-4 flex flex-col sm:flex-row gap-3">
       <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>"><input type="hidden" name="action" value="advance">
       <input name="reason" required minlength="5" maxlength="2000" placeholder="Conditions de démarrage vérifiées" class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm">
       <button class="rounded-lg bg-[#0f294a] text-white px-4 py-2.5 text-sm font-bold">Démarrer l'exécution</button>
@@ -226,7 +226,7 @@ $decisionCards = [
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
     <h3 class="font-bold text-slate-900">Clôturer le marché</h3>
     <p class="text-sm text-slate-600 mt-1">La clôture est une attestation de contrôle : les pièces et éléments du dossier final doivent avoir été vérifiés.</p>
-    <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-4 space-y-3">
+    <form method="post" action="<?= $h($detailAction) ?>" class="mt-4 space-y-3">
       <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>"><input type="hidden" name="action" value="advance">
       <textarea name="reason" required minlength="10" maxlength="5000" rows="3" placeholder="Décrivez les pièces et éléments de clôture contrôlés..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"></textarea>
       <label class="flex items-start gap-2 text-sm text-slate-700"><input type="checkbox" name="closure_confirmed" value="1" required class="mt-1"><span>Je confirme avoir vérifié la complétude du dossier final et identifié les éventuelles pièces manquantes.</span></label>
@@ -240,7 +240,7 @@ $decisionCards = [
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
     <h3 class="font-bold text-slate-900">Qualifier le résultat <?= $lotsSchemaReady ? "du lot" : "du marché" ?></h3>
     <p class="text-sm text-slate-600 mt-1">La proposition reste en attente. Elle ne devient officielle qu'après validation.</p>
-    <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+    <form method="post" action="<?= $h($detailAction) ?>" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>"><input type="hidden" name="action" value="qualify">
       <label class="text-sm font-semibold text-slate-700 sm:col-span-2">Résultat proposé *
         <select name="result_code" id="resultCode" required class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 font-normal">
@@ -286,7 +286,7 @@ $decisionCards = [
           <?php if ($q['validation_reason']): ?><p class="sm:col-span-2 text-red-700">Motif du refus : <?= $h($q['validation_reason']) ?></p><?php endif; ?>
         </div>
         <?php if (empty($q['validation_decision']) && $canValidate && $phase === 5 && in_array($status, ['en_cours', 'a_qualifier'], true)): ?>
-          <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <form method="post" action="<?= $h($detailAction) ?>" class="mt-4 pt-3 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-2">
             <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>"><input type="hidden" name="action" value="validate"><input type="hidden" name="qualification_id" value="<?= (int) $q['id'] ?>">
             <input name="validation_reason" maxlength="2000" placeholder="Motif obligatoire si refus" class="sm:col-span-2 rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <div class="flex gap-2"><button name="decision" value="validee" class="flex-1 rounded-lg bg-emerald-700 text-white px-3 py-2 text-xs font-bold">Valider</button><button name="decision" value="refusee" class="flex-1 rounded-lg bg-red-700 text-white px-3 py-2 text-xs font-bold">Refuser</button></div>
@@ -302,7 +302,7 @@ $decisionCards = [
   <section class="rounded-2xl border border-amber-300 bg-amber-50 p-5">
     <h3 class="font-bold text-amber-950">Réouverture exceptionnelle — GEST</h3>
     <p class="text-sm text-amber-900 mt-1">Le marché retournera en phase 5. La décision précédente restera dans l'historique.</p>
-    <form method="post" action="?page=marche&id=<?= (int) $market['id'] ?>" class="mt-3 flex flex-col sm:flex-row gap-2">
+    <form method="post" action="<?= $h($detailAction) ?>" class="mt-3 flex flex-col sm:flex-row gap-2">
       <input type="hidden" name="csrf_token" value="<?= $h($csrfToken) ?>"><input type="hidden" name="market_id" value="<?= (int) $market['id'] ?>"><input type="hidden" name="action" value="reopen">
       <input name="reason" required minlength="10" maxlength="2000" placeholder="Motif détaillé de réouverture" class="flex-1 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm">
       <button class="rounded-lg bg-amber-800 text-white px-4 py-2.5 text-sm font-bold">Réouvrir le marché</button>
