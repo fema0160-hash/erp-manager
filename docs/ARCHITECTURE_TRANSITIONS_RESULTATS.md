@@ -187,12 +187,12 @@ Les contrôles d'autorisation ne doivent jamais dépendre uniquement de l'affich
 ## 10. État et limites
 
 À la date de rédaction :
-- le service central MarketLifecycle gère la création initiale du marché ;
-- les statuts et phases normalisés sont déclarés ;
-- la création enregistre un événement initial ;
-- les transitions métier, la qualification et la validation ne sont pas encore implémentées ;
-- la migration 003 ne sépare pas les propositions de résultat et leurs validations ;
+- le service central MarketLifecycle gère la création initiale, les transitions 1→5 et 6→8, la qualification, la validation/refus et la réouverture GEST ;
+- les propositions et validations sont enregistrées séparément et appliquées dans des transactions ;
+- l'historique détaillé est consultable dans la fiche du marché ;
+- les actions disposent de permissions dédiées, ouvertes par défaut aux utilisateurs ayant accès au marché ;
 - la migration 004 a été préparée et corrigée dans `database/migrations/004_result_qualification_validation.sql` ;
-- la migration 004 n'a pas été exécutée et attend une approbation explicite.
+- la migration 004 n'a pas été exécutée et attend une approbation explicite ;
+- les tests PHP, navigateur et MariaDB réels restent à effectuer.
 
 **Toute création ou exécution d'une nouvelle migration SQL fera l'objet d'une validation explicite préalable.**
