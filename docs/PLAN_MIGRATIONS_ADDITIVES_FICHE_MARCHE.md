@@ -36,7 +36,9 @@ Le fichier 004 reste le prérequis pour les qualifications, validations et phase
 - Exige 001, 002, 003 et 004 installées.
 - Ajoute la clé candidate `markets(id, company_id)`.
 - Crée les lots et rattache les données historiques au lot n° 1.
-- Exige une adaptation du service métier et des écrans avant utilisation fonctionnelle.
+- Le service `MarketLifecycle` et la fiche marché prennent désormais en charge la création, la sélection, la progression, la qualification, la validation, la réouverture et l'historique par lot. Les nouveaux marchés créés après 005 reçoivent automatiquement leur lot n° 1.
+- La liste des marchés affiche un état synthétique lorsqu'un marché comporte plusieurs lots.
+- Cette adaptation est enregistrée dans le code mais n'a pas encore été testée en environnement PHP/MariaDB.
 - Ne doit pas être exécutée seule avec le code applicatif actuel.
 
 ### Migration 006 — dépendances
@@ -70,7 +72,17 @@ Les scripts 007 à 011 ont été créés sur `main` comme brouillons. Ils n'ont 
 - Les contraintes qui dépendent de plusieurs lignes (plafond cumulé, non-chevauchement, une seule qualification en attente par lot) sont garanties dans des transactions applicatives avec verrouillage.
 - Les DDL MariaDB provoquent des commits implicites : chaque migration doit être contrôlée avant/après et ne doit pas être relancée aveuglément.
 
-## 5. Procédure avant toute installation
+## 5. Code applicatif et tests
+
+- `app/MarketLifecycle.php` : méthodes dédiées aux lots, verrouillage du lot en transaction, qualifications et validations filtrées par lot.
+- `public/index.php` : sélection du lot, routage des actions vers les méthodes lot lorsque le schéma 005 est détecté, compatibilité avec le parcours historique avant 005.
+- `resources/views/market-detail.php` : navigation entre lots, création d'un lot et affichage du cycle/historique du lot sélectionné.
+- `resources/views/markets.php` : affichage synthétique « Plusieurs lots » lorsque plusieurs états indépendants coexistent.
+- Plan de tests : `docs/TESTS_FONCTIONNELS_LOTS_V1.md`.
+
+Aucun test automatisé PHP, aucun test navigateur et aucun test d'import MariaDB n'ont encore été exécutés dans cette passe.
+
+## 6. Procédure avant toute installation
 
 1. Lire `SHOW CREATE TABLE` des tables concernées et comparer avec les prérequis du script.
 2. Vérifier que chaque migration n'a pas déjà été installée.
