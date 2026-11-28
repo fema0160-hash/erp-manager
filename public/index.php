@@ -12,6 +12,7 @@ $currentUser = null;
 try {
     $pdo = require dirname(__DIR__) . '/config/database.php';
     require_once dirname(__DIR__) . '/app/Auth.php';
+    require_once dirname(__DIR__) . '/app/MarketLifecycle.php';
     $auth = new Auth($pdo);
     $auth->start();
 } catch (Throwable $exception) {
@@ -279,12 +280,9 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                     $reference = trim((string) ($_POST['reference'] ?? ''));
                     $object = trim((string) ($_POST['object'] ?? ''));
                     $companyId = (int) ($_POST['company_id'] ?? 0);
-                    // Tout nouveau marché commence obligatoirement à la première étape du cycle.
-                    $status = 'en_attente';
-                    $phase = 1;
                     $amountRaw = str_replace(',', '.', trim((string) ($_POST['amount'] ?? '0')));
                     $marketDate = (string) ($_POST['market_date'] ?? '');
-                    $validDate = DateTime::createFromFormat('Y-m-d', $marketDate);
+                    $validDate = DateTime::createFromFormat('!Y-m-d', $marketDate);
                     if ($reference === '' || strlen($reference) > 40 || $object === '' || strlen($object) > 10000
                         || !in_array($companyId, $allowedCompanyIds, true)
                         || !$auth->hasPermission((int) $currentUser['id'], (string) $currentUser['role'], $companyId, 'markets.create')
@@ -292,14 +290,13 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                         || !$validDate || $validDate->format('Y-m-d') !== $marketDate) {
                         $errorMessage = 'Vérifiez les champs obligatoires et les valeurs saisies.';
                     } else {
-                        $insert = $pdo->prepare(
-                            'INSERT INTO markets (reference, object, company_id, status, phase, amount, market_date, is_demo)
-                             VALUES (:reference, :object, :company_id, :status, :phase, :amount, :market_date, 0)'
-                        );
-                        $insert->execute([
-                            'reference' => $reference, 'object' => $object, 'company_id' => $companyId,
-                            'status' => $status, 'phase' => $phase, 'amount' => $amountRaw, 'market_date' => $marketDate,
-                        ]);
+                        MarketLifecycle::createInitial($pdo, [
+                            'reference' => $reference,
+                            'object' => $object,
+                            'company_id' => $companyId,
+                            'amount' => $amountRaw,
+                            'market_date' => $marketDate,
+                        ], (int) $currentUser['id']);
                         header('Location: ?page=marches&created=1');
                         exit;
                     }
@@ -319,8 +316,8 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                     $like = '%' . $search . '%';
                     array_push($params, $like, $like, $like);
                 }
-                if (in_array($statusFilter, ['en_cours', 'cloture', 'gagne', 'perdu_annule', 'en_attente'], true)) {
-                    $where[] = 'm.status = ?';
+                if (in_array($statusFilter, MarketLifecycle::statusCodes(), true)) {
+                    $where[] = 'm.lifecycle_status = ?';
                     $params[] = $statusFilter;
                 }
                 if ($companyFilter > 0 && in_array($companyFilter, $allowedCompanyIds, true)) {
@@ -329,7 +326,8 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                 }
 
                 $sql = 'SELECT m.id, m.reference, m.object, m.company_id, c.name AS company_name,
-                               m.status, m.phase, m.amount, m.market_date, m.is_demo
+                               m.lifecycle_status AS status, m.lifecycle_phase AS phase,
+                               m.amount, m.market_date, m.is_demo
                         FROM markets m INNER JOIN companies c ON c.id = m.company_id
                         WHERE ' . implode(' AND ', $where) . '
                         ORDER BY m.market_date DESC, m.id DESC';
@@ -402,7 +400,8 @@ try {
         $placeholders = implode(',', array_fill(0, count($marketCompanyIds), '?'));
         $marketQuery = $pdo->prepare(
             'SELECT m.reference, m.object, m.company_id, c.code AS company_code,
-                    m.status, m.phase, m.amount, m.market_date, m.is_demo
+                    m.lifecycle_status AS status, m.lifecycle_phase AS phase,
+                    m.amount, m.market_date, m.is_demo
              FROM markets m
              INNER JOIN companies c ON c.id = m.company_id
              WHERE m.company_id IN (' . $placeholders . ')
