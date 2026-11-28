@@ -468,7 +468,13 @@ final class MarketLifecycle
                 'lot_number' => $number, 'lot_reference' => $reference !== '' ? $reference : null,
                 'lot_label' => $label,
             ]);
-            return (int) $pdo->lastInsertId();
+            $lotId = (int) $pdo->lastInsertId();
+            self::insertLotHistory(
+                $pdo,
+                ['id' => $lotId, 'market_id' => $marketId, 'company_id' => (int) $market['company_id']],
+                'creation_lot', null, null, 'en_cours', 1, 0, 'Création du lot n° ' . $number . '.'
+            );
+            return $lotId;
         });
     }
 
