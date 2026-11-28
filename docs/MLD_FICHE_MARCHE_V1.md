@@ -149,8 +149,6 @@ Données d'étude 1:1.
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `market_id` | INT UNSIGNED | Non | Marché |
-| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné (FK composite vers market_lots) |
-| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné (FK composite vers market_lots) |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `launch_date` | DATE | Non | Date de lancement |
 | `offer_deadline_at` | DATETIME | Non | Date/heure limite de remise |
@@ -203,6 +201,7 @@ Informations propres à l'attribution et au contrat, 0:1 par lot. Ajouter `lot_i
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `market_id` | INT UNSIGNED | Non | Marché |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot attribué |
 | `company_id` | INT UNSIGNED | Non | Société |
 | `official_market_number` | VARCHAR(100) | Oui | N° officiel du marché attribué |
 | `contract_signed_at` | DATE | Oui | Date de signature |
@@ -218,10 +217,10 @@ Informations propres à l'attribution et au contrat, 0:1 par lot. Ajouter `lot_i
 | `updated_at` | DATETIME | Non | Modification |
 
 Index et contraintes :
-- UNIQUE `(market_id)`.
-- UNIQUE `(id, market_id, company_id)`.
-- FK composite vers `markets(id, company_id)`.
-- CHECK taux entre 0 et 100 ; base et montant >= 0.
+- UNIQUE `(lot_id)`.
+- UNIQUE `(id, lot_id, market_id, company_id)`.
+- FK composite `(lot_id, market_id, company_id)` vers `market_lots(id, market_id, company_id)`.
+- CHECK taux entre 0 et 100 ; base et plafond TTC >= 0.
 - Le montant attribué reste la donnée officielle issue de la qualification validée et du champ existant `markets.awarded_amount`. Toute copie éventuelle dans cette table doit être supprimée de la conception finale pour éviter deux valeurs concurrentes.
 
 ## 5. Cautions et garanties
@@ -439,7 +438,7 @@ Chaque version BPU appartient à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT NUL
 | `created_at` | DATETIME | Non | Création |
 | `finalized_at` | DATETIME | Oui | Finalisation |
 
-Index UNIQUE `(market_id, version_number)`, UNIQUE `(id, market_id, company_id)`, FK composite vers markets et stored_documents. Le passage à finale doit être contrôlé par transaction ; une seule version finale active par marché, règle applicative.
+Index UNIQUE `(lot_id, version_number)`, UNIQUE `(id, market_id, company_id)`, FK composite `(lot_id, market_id, company_id)` vers `market_lots` et FK composite vers stored_documents. Le passage à finale doit être contrôlé par transaction ; une seule version finale active par lot, règle applicative.
 
 ### 8.2 `market_bpu_items`
 
@@ -480,7 +479,7 @@ Index UNIQUE `(bpu_version_id, line_number)`, FK composite `(bpu_version_id, mar
 | `imported_by` | INT UNSIGNED FK users | Non | Auteur |
 | `imported_at` | DATETIME | Non | Date |
 
-Index `(market_id, imported_at)`, FK composites vers version et documents. Un import ne remplace jamais silencieusement une version antérieure.
+Index `(market_id, imported_at)`, FK composite vers la version BPU incluant le lot et FK composites vers documents. Un import ne remplace jamais silencieusement une version antérieure.
 
 ## 9. Contrat, renouvellements et alertes
 
@@ -506,7 +505,7 @@ Chaque lot possède une période initiale et zéro ou plusieurs renouvellements.
 | `created_by` | INT UNSIGNED FK users | Non | Auteur |
 | `created_at` | DATETIME | Non | Création |
 
-Index UNIQUE `(market_id, period_number)`, UNIQUE `(id, market_id, company_id)`, FK composites vers markets et documents. CHECK `end_date >= start_date`, durée > 0. L'application contrôle qu'une seule période initiale existe et que les périodes successives ne se chevauchent pas sans justification.
+Index UNIQUE `(lot_id, period_number)`, UNIQUE `(id, market_id, company_id)`, FK composite `(lot_id, market_id, company_id)` vers market_lots et FK composites vers documents. CHECK `end_date >= start_date`, durée > 0. L'application contrôle qu'une seule période initiale existe et que les périodes successives ne se chevauchent pas sans justification.
 
 ### 9.2 `market_alert_rules`
 
@@ -530,6 +529,7 @@ UNIQUE `(company_id, alert_type, days_before)`. Types V1 proposés : `renouvelle
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `company_id` | INT UNSIGNED FK | Non | Société |
 | `market_id` | INT UNSIGNED | Non | Marché |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot concerné |
 | `contract_period_id` | BIGINT UNSIGNED | Oui | Période concernée |
 | `guarantee_id` | BIGINT UNSIGNED | Oui | Caution concernée |
 | `rule_id` | BIGINT UNSIGNED FK | Non | Règle |
@@ -589,7 +589,7 @@ Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT N
 | `created_by` | INT UNSIGNED FK users | Non | Auteur |
 | `created_at` | DATETIME | Non | Création |
 
-UNIQUE `(market_id, situation_number)`, KEY `(market_id, period_start, period_end)`, FK composites vers marché et document.
+UNIQUE `(lot_id, situation_number)`, UNIQUE `(id, lot_id, market_id, company_id)`, KEY `(lot_id, period_start, period_end)`, FK composite vers market_lots et FK composite vers document.
 
 ### 10.3 `market_retention_events`
 
@@ -633,7 +633,7 @@ Chaque avenant est rattaché au lot concerné via `lot_id` et une FK composite v
 | `created_by` | INT UNSIGNED FK users | Non | Auteur |
 | `created_at` | DATETIME | Non | Création |
 
-UNIQUE `(market_id, amendment_number)`, FK composites vers marché et document.
+UNIQUE `(lot_id, amendment_number)`, FK composite vers market_lots et FK composite vers document.
 
 ### 10.5 `market_receptions`
 
@@ -653,7 +653,7 @@ Chaque réception est rattachée au lot concerné via `lot_id` et une FK composi
 | `created_by` | INT UNSIGNED FK users | Non | Auteur |
 | `created_at` | DATETIME | Non | Création |
 
-KEY `(market_id, reception_type, reception_date)`, FK composites vers marché et document. Plusieurs réceptions peuvent être enregistrées ; la règle de cohérence provisoire/définitive est contrôlée par le service métier.
+KEY `(lot_id, reception_type, reception_date)`, FK composite vers market_lots et FK composite vers document. Plusieurs réceptions peuvent être enregistrées ; la règle de cohérence provisoire/définitive est contrôlée par le service métier.
 
 ### 10.6 `market_closures`
 
@@ -675,7 +675,7 @@ La clôture est gérée par lot. Ajouter `lot_id` et porter l'unicité de clôtu
 | `closed_by` | INT UNSIGNED FK users | Non | Responsable |
 | `closed_at` | DATETIME | Non | Date de clôture |
 
-UNIQUE `(market_id)`, FK composite vers marché. CHECK montants >= 0. Les réserves et PV détaillés sont stockés dans `market_receptions`, pas dans un texte unique.
+UNIQUE `(lot_id)`, FK composite vers market_lots. CHECK montants >= 0. Les réserves et PV détaillés sont stockés dans `market_receptions`, pas dans un texte unique.
 
 ## 11. Synthèse des nouvelles tables
 
