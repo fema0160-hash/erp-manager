@@ -585,12 +585,13 @@ Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT N
 | `amount_ttc` | DECIMAL(15,2) | Non | TTC |
 | `situation_status` | VARCHAR(20) | Non | `brouillon`, `soumise`, `validee`, `payee`, `rejetee` |
 | `submitted_at` | DATETIME | Oui | Soumission |
-| `approved_at` | DATETIME | Oui | Validation |
+| `approved_at` | DATETIME | Oui | Date de validation |
+| `approved_by` | INT UNSIGNED FK users | Oui | Utilisateur ayant validé la situation |
 | `document_id` | BIGINT UNSIGNED | Oui | Décompte |
 | `created_by` | INT UNSIGNED FK users | Non | Auteur |
 | `created_at` | DATETIME | Non | Création |
 
-UNIQUE `(lot_id, situation_number)`, UNIQUE `(id, lot_id, market_id, company_id)`, KEY `(lot_id, period_start, period_end)`, FK composite vers market_lots et FK composite vers document.
+UNIQUE `(lot_id, situation_number)`, UNIQUE `(id, lot_id, market_id, company_id)`, KEY `(lot_id, period_start, period_end)`, FK composite vers market_lots et FK composite vers document ; FK `approved_by → users.id`. `approved_at` et `approved_by` sont renseignés ensemble ; une situation `validee` ou `payee` exige les deux.
 
 ### 10.3 `market_retention_events`
 
