@@ -488,7 +488,9 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
                     array_push($params, $like, $like, $like);
                 }
                 $lotsSchemaReady = MarketLifecycle::lotsSchemaReady($pdo);
-                if (in_array($statusFilter, MarketLifecycle::statusCodes(), true)) {
+                if ($lotsSchemaReady && $statusFilter === 'multi_lots') {
+                    $where[] = '(SELECT COUNT(*) FROM market_lots lf WHERE lf.market_id = m.id) > 1';
+                } elseif (in_array($statusFilter, MarketLifecycle::statusCodes(), true)) {
                     if ($lotsSchemaReady) {
                         $where[] = 'EXISTS (SELECT 1 FROM market_lots lf WHERE lf.market_id = m.id AND lf.lifecycle_status = ?)';
                     } else {
