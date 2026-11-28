@@ -250,6 +250,10 @@ if ($page === 'marche') {
     $successMessage = isset($_GET['success']) ? 'Opération enregistrée avec succès.' : '';
     $errorMessage = '';
     $schemaReady = false;
+    $lotsSchemaReady = false;
+    $lots = [];
+    $selectedLot = null;
+    $selectedLotId = 0;
 
     try {
         $market = MarketLifecycle::findMarket($pdo, $marketId);
@@ -292,14 +296,52 @@ if ($page === 'marche') {
             && (int) ($schemaState['constraint_count'] ?? 0) === 2
             && (int) ($schemaState['permission_count'] ?? 0) === 4;
 
+        $lotsSchemaReady = MarketLifecycle::lotsSchemaReady($pdo);
+        if ($lotsSchemaReady) {
+            $lots = MarketLifecycle::lots($pdo, $marketId);
+            if (!$lots) {
+                throw new RuntimeException('Aucun lot n’est associé à ce marché. Vérifiez la migration 005 avant de continuer.');
+            }
+            $requestedLotId = (int) ($_GET['lot_id'] ?? $_POST['lot_id'] ?? 0);
+            foreach ($lots as $lotRow) {
+                if ($requestedLotId === (int) $lotRow['id']) {
+                    $selectedLot = $lotRow;
+                    break;
+                }
+            }
+            if ($selectedLot === null) $selectedLot = $lots[0];
+            $selectedLotId = (int) $selectedLot['id'];
+            // La vue conserve l'en-tête du marché, mais affiche le cycle du lot sélectionné.
+            $market['lifecycle_status'] = $selectedLot['lifecycle_status'];
+            $market['lifecycle_phase'] = $selectedLot['lifecycle_phase'];
+            $market['status'] = $selectedLot['lifecycle_status'];
+            $market['phase'] = $selectedLot['lifecycle_phase'];
+        }
+
         if ($isPost) {
             if (!$auth->verifyCsrf($_POST['csrf_token'] ?? null)) {
                 throw new RuntimeException('Votre session a expiré. Rechargez la page et réessayez.');
             }
 
             $action = (string) ($_POST['action'] ?? '');
+            if ($action === 'create_lot') {
+                if (!$lotsSchemaReady) throw new RuntimeException('La migration 005 doit être installée avant la création de lots.');
+                if (!$auth->hasPermission($userId, $role, $companyId, 'markets.create')) {
+                    http_response_code(403);
+                    throw new DomainException('Vous ne disposez pas du droit de créer un lot.');
+                }
+                $newLotId = MarketLifecycle::createLot(
+                    $pdo, $marketId, (string) ($_POST['lot_label'] ?? ''),
+                    (string) ($_POST['lot_reference'] ?? '')
+                );
+                header('Location: ?page=marche&id=' . $marketId . '&lot_id=' . $newLotId . '&success=1');
+                exit;
+            }
             if (!$schemaReady && ($action !== 'advance' || (int) $market['lifecycle_phase'] > 4)) {
                 throw new RuntimeException('La migration 004 doit être installée avant les qualifications, validations et phases 6 à 8.');
+            }
+            if ($lotsSchemaReady && $selectedLotId < 1) {
+                throw new RuntimeException('Sélectionnez un lot valide.');
             }
             $permission = match ($action) {
                 'advance' => 'markets.lifecycle.advance',
@@ -314,29 +356,46 @@ if ($page === 'marche') {
             }
 
             if ($action === 'advance') {
-                MarketLifecycle::advancePhase(
-                    $pdo, $marketId, $userId,
-                    (string) ($_POST['reason'] ?? ''),
-                    isset($_POST['closure_confirmed']) && $_POST['closure_confirmed'] === '1'
-                );
+                if ($lotsSchemaReady) {
+                    MarketLifecycle::advanceLotPhase(
+                        $pdo, $marketId, $selectedLotId, $userId,
+                        (string) ($_POST['reason'] ?? ''),
+                        isset($_POST['closure_confirmed']) && $_POST['closure_confirmed'] === '1'
+                    );
+                } else {
+                    MarketLifecycle::advancePhase(
+                        $pdo, $marketId, $userId,
+                        (string) ($_POST['reason'] ?? ''),
+                        isset($_POST['closure_confirmed']) && $_POST['closure_confirmed'] === '1'
+                    );
+                }
             } elseif ($action === 'qualify') {
-                MarketLifecycle::qualifyResult($pdo, $marketId, $userId, $_POST);
+                if ($lotsSchemaReady) MarketLifecycle::qualifyLotResult($pdo, $marketId, $selectedLotId, $userId, $_POST);
+                else MarketLifecycle::qualifyResult($pdo, $marketId, $userId, $_POST);
             } elseif ($action === 'validate') {
-                MarketLifecycle::validateResult(
-                    $pdo, $marketId, (int) ($_POST['qualification_id'] ?? 0), $userId,
-                    (string) ($_POST['decision'] ?? ''), (string) ($_POST['validation_reason'] ?? '')
-                );
+                if ($lotsSchemaReady) {
+                    MarketLifecycle::validateLotResult(
+                        $pdo, $marketId, $selectedLotId, (int) ($_POST['qualification_id'] ?? 0), $userId,
+                        (string) ($_POST['decision'] ?? ''), (string) ($_POST['validation_reason'] ?? '')
+                    );
+                } else {
+                    MarketLifecycle::validateResult(
+                        $pdo, $marketId, (int) ($_POST['qualification_id'] ?? 0), $userId,
+                        (string) ($_POST['decision'] ?? ''), (string) ($_POST['validation_reason'] ?? '')
+                    );
+                }
             } elseif ($action === 'reopen') {
-                MarketLifecycle::reopen($pdo, $marketId, $userId, $role, (string) ($_POST['reason'] ?? ''));
+                if ($lotsSchemaReady) MarketLifecycle::reopenLot($pdo, $marketId, $selectedLotId, $userId, $role, (string) ($_POST['reason'] ?? ''));
+                else MarketLifecycle::reopen($pdo, $marketId, $userId, $role, (string) ($_POST['reason'] ?? ''));
             }
-            header('Location: ?page=marche&id=' . $marketId . '&success=1');
+            header('Location: ?page=marche&id=' . $marketId . ($lotsSchemaReady ? '&lot_id=' . $selectedLotId : '') . '&success=1');
             exit;
         }
 
         if ($schemaReady) {
-            $qualifications = MarketLifecycle::qualifications($pdo, $marketId);
+            $qualifications = MarketLifecycle::qualifications($pdo, $marketId, $lotsSchemaReady ? $selectedLotId : null);
         }
-        $history = MarketLifecycle::history($pdo, $marketId, $schemaReady);
+        $history = MarketLifecycle::history($pdo, $marketId, $schemaReady, $lotsSchemaReady ? $selectedLotId : null);
     } catch (PDOException $exception) {
         error_log('ERP Manager - fiche marché : ' . $exception->getMessage());
         $errorMessage = 'Impossible de charger ou de traiter cette fiche. Vérifiez que les migrations requises sont installées.';
