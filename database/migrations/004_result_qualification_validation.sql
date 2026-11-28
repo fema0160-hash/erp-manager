@@ -31,6 +31,14 @@
 
 SET NAMES utf8mb4;
 
+-- Droits dédiés : actifs par défaut pour tous les utilisateurs autorisés.
+-- Auth::hasPermission applique les restrictions par utilisateur et entreprise.
+INSERT IGNORE INTO permissions (code, label, description) VALUES
+('markets.lifecycle.advance', 'Faire avancer le cycle de vie', 'Passer un marché à la phase suivante'),
+('markets.results.qualify', 'Qualifier un résultat', 'Proposer le résultat officiel d’un marché'),
+('markets.results.validate', 'Valider un résultat', 'Valider ou refuser une qualification'),
+('markets.lifecycle.reopen', 'Réouvrir un marché', 'Réouverture exceptionnelle réservée à GEST');
+
 CREATE TABLE market_result_qualifications (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
     market_id INT UNSIGNED NOT NULL,
