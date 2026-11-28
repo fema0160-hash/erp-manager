@@ -25,6 +25,11 @@ Le fichier 004 reste le prérequis pour les qualifications, validations et phase
 |---|---|---|---|
 | 005 | `database/migrations/005_market_lots_independent.sql` | Lot n° 1 automatique, lots additionnels, rattachement des qualifications et transitions aux lots | Brouillon non exécuté |
 | 006 | `database/migrations/006_market_core_details.sql` | Numérotation, paramètres par société, organismes, détails, étude, dépôt et attribution par lot | Brouillon non exécuté |
+| 007 | `database/migrations/007_market_documents_checklist.sql` | Documents privés, modèles, checklist et événements append-only | Brouillon non exécuté |
+| 008 | `database/migrations/008_market_guarantees.sql` | Cautions successives par lot, remplacements et justificatifs | Brouillon non exécuté |
+| 009 | `database/migrations/009_market_bpu.sql` | Versions BPU par lot, lignes HT/TVA/TTC et imports | Brouillon non exécuté |
+| 010 | `database/migrations/010_market_contract_periods_alerts.sql` | Périodes contractuelles, renouvellements, règles et occurrences d'alertes | Brouillon non exécuté |
+| 011 | `database/migrations/011_market_execution_retention_closure.sql` | Exécution, situations, retenues TTC, avenants, réceptions et clôtures | Brouillon non exécuté |
 
 ### Migration 005 — dépendances
 
@@ -41,17 +46,17 @@ Le fichier 004 reste le prérequis pour les qualifications, validations et phase
 - Enregistre les instantanés par lot au moment de l'attribution.
 - Les champs qui ne sont connus qu'aux phases ultérieures restent NULL avant leur saisie.
 
-## 3. Migrations restantes à préparer
+## 3. Dépendances des migrations 007 à 011
 
-| Migration proposée | Périmètre | Dépendances principales |
+| Migration | Dépendances | Objets principaux |
 |---|---|---|
-| 007 | Documents privés, modèles documentaires et checklist des phases 3/4 avec historique append-only | 005, 006 |
-| 008 | Cautions provisoires/définitives successives, remplacements et justificatifs | 005, 006, 007 |
-| 009 | BPU par lot, versions, lignes HT/TVA/TTC, imports et rapports d'erreurs | 005, 007 |
-| 010 | Périodes contractuelles, renouvellements, règles et occurrences d'alertes | 005, 006, 007, 008 |
-| 011 | Événements de chantier, situations de travaux, retenues TTC, avenants, réceptions et clôtures par lot | 005, 006, 007, 008, 009, 010 |
+| 007 | 005, 006 | Modèles documentaires, fichiers privés, checklist et événements |
+| 008 | 005, 007 | Cautions successives et liens de remplacement |
+| 009 | 005, 007 | Versions BPU, lignes, imports et rapports |
+| 010 | 005, 007, 008 | Périodes, règles et occurrences d'alertes |
+| 011 | 005 à 010 | Événements chantier, situations, retenues, avenants, réceptions et clôtures |
 
-L'ordre définitif sera ajusté après vérification de toutes les clés étrangères, notamment les références composites vers les fichiers, les lots, les situations et les cautions.
+Les scripts 007 à 011 ont été créés sur `main` comme brouillons. Ils n'ont pas encore subi un test d'import réel sur MariaDB 10.4.32. La relecture statique doit notamment confirmer les FK composites, les triggers append-only et les règles de verrouillage applicatif avant toute installation.
 
 ## 4. Règles SQL et métier obligatoires
 
