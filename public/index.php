@@ -270,21 +270,28 @@ if ($page === 'marche') {
         }
 
         $check = $pdo->query(
-            "SELECT COUNT(*) FROM information_schema.TABLES
-             WHERE TABLE_SCHEMA = DATABASE()
-               AND TABLE_NAME IN ('market_result_qualifications', 'market_result_validations')"
+            "SELECT
+                (SELECT COUNT(*) FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME IN ('market_result_qualifications', 'market_result_validations')) AS table_count,
+                (SELECT COUNT(*) FROM information_schema.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND ((TABLE_NAME = 'markets' AND COLUMN_NAME = 'official_result_qualification_id')
+                     OR (TABLE_NAME = 'market_transitions' AND COLUMN_NAME = 'qualification_id'))) AS column_count"
         );
-        $schemaReady = (int) $check->fetchColumn() === 2;
+        $schemaState = $check->fetch();
+        $schemaReady = (int) ($schemaState['table_count'] ?? 0) === 2
+            && (int) ($schemaState['column_count'] ?? 0) === 2;
 
         if ($isPost) {
             if (!$auth->verifyCsrf($_POST['csrf_token'] ?? null)) {
                 throw new RuntimeException('Votre session a expiré. Rechargez la page et réessayez.');
             }
-            if (!$schemaReady) {
-                throw new RuntimeException('La migration 004 doit être installée avant d’utiliser les transitions, qualifications et validations.');
-            }
 
             $action = (string) ($_POST['action'] ?? '');
+            if (!$schemaReady && ($action !== 'advance' || (int) $market['lifecycle_phase'] > 4)) {
+                throw new RuntimeException('La migration 004 doit être installée avant les qualifications, validations et phases 6 à 8.');
+            }
             $permission = match ($action) {
                 'advance' => 'markets.lifecycle.advance',
                 'qualify' => 'markets.results.qualify',
@@ -319,8 +326,8 @@ if ($page === 'marche') {
 
         if ($schemaReady) {
             $qualifications = MarketLifecycle::qualifications($pdo, $marketId);
-            $history = MarketLifecycle::history($pdo, $marketId);
         }
+        $history = MarketLifecycle::history($pdo, $marketId, $schemaReady);
     } catch (PDOException $exception) {
         error_log('ERP Manager - fiche marché : ' . $exception->getMessage());
         $errorMessage = 'Impossible de charger ou de traiter cette fiche. Vérifiez que les migrations requises sont installées.';
