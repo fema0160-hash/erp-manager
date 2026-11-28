@@ -3,7 +3,7 @@ Référence : erp-manager/docs/MLD_FICHE_MARCHE_V1.md
 # MLD — Modèle logique de données de la fiche marché
 
 - Projet : ERP Manager
-- Version : MLD Fiche Marché V1
+- Version : MLD Fiche Marché V1.1 — décisions métier intégrées
 - Branche de référence : `main`
 - SGBD cible : MariaDB 10.4.32
 - Moteur : InnoDB
@@ -21,6 +21,7 @@ Référence : erp-manager/docs/MLD_FICHE_MARCHE_V1.md
 - Les colonnes `created_at` et `updated_at` sont ajoutées aux tables métier modifiables.
 - Les tables métier liées à un marché portent `market_id` et `company_id`.
 - Les clés étrangères composites `(market_id, company_id)` pointent vers `markets(id, company_id)`. Il faut donc ajouter une clé UNIQUE correspondante à `markets`.
+- Les objets propres à un lot portent `lot_id`, `market_id` et `company_id`, avec une FK composite vers `market_lots(id, market_id, company_id)`.
 - Les références aux utilisateurs sont conservées même si le compte est ensuite désactivé ; aucune suppression en cascade d'historique utilisateur.
 - Les colonnes de compatibilité historiques `markets.reference`, `status`, `phase`, `amount`, `market_date`, `lifecycle_status` et `lifecycle_phase` sont conservées.
 - Les noms ci-dessous sont des noms logiques proposés. Ils ne doivent pas être créés avant validation du modèle et comparaison finale avec le schéma réel installé.
@@ -39,7 +40,7 @@ Référence : erp-manager/docs/MLD_FICHE_MARCHE_V1.md
 | `user_permission_restrictions` | `id BIGINT UNSIGNED` | Restrictions fonctionnelles facultatives |
 | `markets` | `id INT UNSIGNED` | Dossier marché |
 | `market_transitions` | `id BIGINT UNSIGNED` | Historique du cycle |
-| `market_result_qualifications` | `id BIGINT UNSIGNED` | Résultats proposés |
+| `market_result_qualifications` | `id BIGINT UNSIGNED` | Résultats proposés, rattachés à un lot par migration additive 005 |
 | `market_result_validations` | `id BIGINT UNSIGNED` | Validation/refus des résultats |
 
 Les tables `market_result_qualifications` et `market_result_validations` de la migration 004 restent l'unique mécanisme de qualification et de validation. Ne pas créer de tables de résultat concurrentes.
@@ -52,6 +53,7 @@ Colonnes supplémentaires proposées :
 |---|---|---|
 | `internal_number` | `VARCHAR(40) NULL` au déploiement | Numéro interne automatique ; rempli progressivement pour les anciens dossiers |
 | `updated_at` | `DATETIME NULL` | Date de dernière modification, avec stratégie de remplissage des anciens dossiers |
+| `official_result_qualification_id` | `BIGINT UNSIGNED NULL` | Pointeur historique de compatibilité ; les résultats nouveaux sont portés par lot |
 
 Index et contraintes :
 - `UNIQUE(company_id, internal_number)` ; plusieurs NULL sont tolérés pendant la migration des anciens dossiers.
@@ -103,8 +105,6 @@ Complément 1:1 des informations générales du marché.
 | `duration_months` | SMALLINT UNSIGNED | Non | Durée initiale en mois |
 | `is_renewable` | TINYINT(1) | Non | Oui/non |
 | `renewal_duration_years` | SMALLINT UNSIGNED | Oui | Obligatoire si renouvelable |
-| `lot_reference` | VARCHAR(100) | Oui | Référence du lot |
-| `lot_label` | VARCHAR(180) | Oui | Désignation du lot |
 | `market_nature` | VARCHAR(20) | Oui | Travaux, fournitures, services |
 | `execution_address` | VARCHAR(255) | Oui | Lieu d'exécution |
 | `created_at` | DATETIME | Non | Création |
@@ -118,6 +118,26 @@ Index et contraintes :
 - FK composite `(project_manager_organization_id, company_id) → market_organizations(id, company_id)`.
 - CHECK : durée initiale supérieure à zéro ; `is_renewable` dans 0/1 ; si non renouvelable alors durée de renouvellement NULL ; si renouvelable alors durée de renouvellement positive.
 - UNIQUE éventuelle `(company_id, tender_number, lot_reference)` à valider selon la règle réelle des appels d'offres et lots. Ne pas imposer avant de confirmer les doublons légitimes.
+
+### 3.3 `market_lots`
+
+Un marché possède au moins un lot. Le lot n° 1 est créé automatiquement lors de la création du marché ; l'utilisateur peut ensuite ajouter des lots indépendants.
+
+| Colonne | Type | Null | Description |
+|---|---|---:|---|
+| `id` | BIGINT UNSIGNED PK AI | Non | Identifiant du lot |
+| `market_id` | INT UNSIGNED | Non | Marché parent |
+| `company_id` | INT UNSIGNED | Non | Société propriétaire |
+| `lot_number` | SMALLINT UNSIGNED | Non | Numéro séquentiel du lot |
+| `lot_reference` | VARCHAR(100) | Oui | Référence officielle |
+| `lot_label` | VARCHAR(180) | Non | Désignation |
+| `lifecycle_status` | VARCHAR(20) | Non | Statut indépendant du lot |
+| `lifecycle_phase` | TINYINT UNSIGNED | Non | Phase indépendante 1 à 8 |
+| `awarded_amount` | DECIMAL(15,2) | Oui | Montant TTC attribué au lot, alimenté après validation |
+| `created_at` | DATETIME | Non | Création |
+| `updated_at` | DATETIME | Non | Modification |
+
+Contraintes : UNIQUE `(market_id, lot_number)`, UNIQUE `(id, market_id, company_id)`, FK `(market_id, company_id)` vers `markets(id, company_id)`, CHECK `lot_number > 0`, CHECK phase 1 à 8 et statuts autorisés. Le lot par défaut est créé dans la même transaction que le marché. Les phases historiques du marché sont copiées vers le lot n° 1 lors de la migration 005.
 
 ## 4. Étude, dépôt et attribution
 
@@ -175,22 +195,23 @@ Index et contraintes :
 
 ### 4.3 `market_award_details`
 
-Informations propres à l'attribution et au contrat, 0:1 par marché.
+Informations propres à l'attribution et au contrat, 0:1 par lot. Ajouter `lot_id BIGINT UNSIGNED NOT NULL` et remplacer l'unicité `(market_id)` par UNIQUE `(lot_id)`. La table doit porter aussi UNIQUE `(id, lot_id, market_id, company_id)` et une FK composite vers `market_lots`. Le numéro officiel, la date de notification et l'ordre de service sont NULL tant qu'ils ne sont pas connus.
 
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
-| `official_market_number` | VARCHAR(100) | Non | N° officiel du marché attribué |
+| `official_market_number` | VARCHAR(100) | Oui | N° officiel du marché attribué |
 | `contract_signed_at` | DATE | Oui | Date de signature |
-| `service_order_number` | VARCHAR(100) | Non | N° ordre de service |
-| `service_order_date` | DATE | Non | Date ordre de service |
-| `notification_date` | DATE | Non | Date de notification |
-| `retention_rate_percent` | DECIMAL(5,2) | Non | Instantané du taux paramétré |
-| `retention_base_amount` | DECIMAL(15,2) | Non | Base contractuelle de calcul |
-| `retention_amount` | DECIMAL(15,2) | Non | Montant calculé |
-| `retention_base_code` | VARCHAR(30) | Non | Code de base utilisé |
+| `service_order_number` | VARCHAR(100) | Oui | N° ordre de service |
+| `service_order_date` | DATE | Oui | Date ordre de service |
+| `notification_date` | DATE | Oui | Date de notification |
+| `retention_rate_percent` | DECIMAL(5,2) | Non | Instantané du taux de prélèvement (défaut 10 %) |
+| `retention_cap_percent` | DECIMAL(5,2) | Non | Instantané du plafond (défaut 7 %) |
+| `retention_base_amount_ttc` | DECIMAL(15,2) | Non | Montant TTC initial attribué au lot |
+| `retention_cap_amount_ttc` | DECIMAL(15,2) | Non | Plafond monétaire calculé à 7 % du TTC attribué |
+| `retention_base_code` | VARCHAR(30) | Non | `awarded_amount_ttc` |
 | `created_at` | DATETIME | Non | Création |
 | `updated_at` | DATETIME | Non | Modification |
 
@@ -205,7 +226,7 @@ Index et contraintes :
 
 ### 5.1 `market_guarantees`
 
-Une ligne par type de caution et par marché en V1.
+Plusieurs cautions successives de chaque type peuvent être conservées pour un même lot. Ajouter `lot_id BIGINT UNSIGNED NOT NULL`, `sequence_number SMALLINT UNSIGNED NOT NULL` et `replaces_guarantee_id BIGINT UNSIGNED NULL`. L'unicité devient `(lot_id, guarantee_type, sequence_number)` ; aucune contrainte UNIQUE ne doit limiter à une seule caution par type. Chaque caution remplacée reste consultable.
 
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
@@ -227,9 +248,9 @@ Une ligne par type de caution et par marché en V1.
 | `updated_at` | DATETIME | Non | Modification |
 
 Index et contraintes :
-- UNIQUE `(market_id, guarantee_type)`.
-- UNIQUE `(id, market_id, company_id)`.
-- FK composite vers `markets(id, company_id)`.
+- UNIQUE `(lot_id, guarantee_type, sequence_number)`.
+- UNIQUE `(id, market_id, company_id)` et clé composite pour l'auto-référence de remplacement.
+- FK composite vers `market_lots(id, market_id, company_id)`.
 - FK composite du document vers `stored_documents`.
 - CHECK montants >= 0.
 - Le taux de retenue de garantie n'est pas stocké dans cette table : il appartient à `market_award_details` et aux paramètres.
@@ -253,8 +274,9 @@ Une table d'événements de caution est à prévoir si le besoin de tracer sépa
 Index : UNIQUE `(company_id, setting_key)`, FK company et user.
 
 Clés initiales proposées :
-- `retention_rate_percent` : taux de retenue ;
-- `retention_base_code` : base de calcul ;
+- `retention_rate_percent` : taux de prélèvement, valeur initiale 10.00 ;
+- `retention_cap_percent` : plafond cumulé, valeur initiale 7.00 ;
+- `retention_base_code` : `situation_ttc` pour le prélèvement et `awarded_amount_ttc` pour le plafond ;
 - `renewal_alert_days` : délais d'alerte par défaut, si la table de règles n'est pas utilisée ;
 - `market_number_prefix` : préfixe de numéro interne ;
 - `market_number_padding` : longueur du compteur.
@@ -391,6 +413,8 @@ Le tableau reste modifiable pendant les phases 3 et 4. À la confirmation du dé
 
 ### 8.1 `market_bpu_versions`
 
+Chaque version BPU appartient à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT NULL` et une FK composite vers `market_lots`; remplacer les unicités de version et de version finale par une portée par lot.
+
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
@@ -423,13 +447,13 @@ Index UNIQUE `(market_id, version_number)`, UNIQUE `(id, market_id, company_id)`
 | `unit` | VARCHAR(30) | Oui | Unité |
 | `quantity` | DECIMAL(15,3) | Non | Quantité |
 | `unit_price_ht` | DECIMAL(15,4) | Non | Prix unitaire HT |
-| `vat_rate_percent` | DECIMAL(5,2) | Non | Taux TVA |
+| `vat_rate_percent` | DECIMAL(5,2) | Non | Taux TVA de cette ligne |
 | `line_total_ht` | DECIMAL(15,2) | Non | Quantité × prix HT |
 | `line_total_vat` | DECIMAL(15,2) | Non | TVA |
 | `line_total_ttc` | DECIMAL(15,2) | Non | TTC |
 | `source_row_number` | INT UNSIGNED | Oui | Ligne du fichier importé |
 
-Index UNIQUE `(bpu_version_id, line_number)`, FK composite `(bpu_version_id, market_id, company_id)` vers `market_bpu_versions(id, market_id, company_id)`. CHECK quantité, prix, TVA et montants >= 0 ; taux TVA <= 100. Les montants de ligne sont recalculés côté serveur, pas acceptés aveuglément depuis le navigateur.
+Index UNIQUE `(bpu_version_id, line_number)`, FK composite `(bpu_version_id, market_id, company_id)` vers `market_bpu_versions(id, market_id, company_id)`. CHECK quantité, prix, TVA et montants >= 0 ; taux TVA <= 100. Calcul serveur : HT = quantité × prix unitaire HT ; TVA = HT × taux TVA / 100 ; TTC = HT + TVA. Arrondi monétaire à deux décimales selon la règle d'arrondi retenue dans le service métier. Les montants ne sont jamais acceptés aveuglément depuis le navigateur.
 
 ### 8.3 `market_bpu_imports`
 
@@ -454,7 +478,7 @@ Index `(market_id, imported_at)`, FK composites vers version et documents. Un im
 
 ### 9.1 `market_contract_periods`
 
-Chaque marché possède une période initiale et zéro ou plusieurs renouvellements.
+Chaque lot possède une période initiale et zéro ou plusieurs renouvellements. Ajouter `lot_id BIGINT UNSIGNED NOT NULL` et une FK composite vers `market_lots`; l'unicité de période est portée par lot.
 
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
@@ -514,6 +538,8 @@ UNIQUE `deduplication_key`, KEY `(company_id, alert_status, scheduled_for)`. FK 
 
 ### 10.1 `market_execution_events`
 
+Les événements d'exécution sont rattachés à un lot via `lot_id BIGINT UNSIGNED NOT NULL` et une FK composite vers `market_lots`.
+
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
@@ -531,6 +557,8 @@ UNIQUE `deduplication_key`, KEY `(company_id, alert_status, scheduled_for)`. FK 
 KEY `(market_id, event_date)`, FK composites vers marché et document. CHECK avancement entre 0 et 100, montant >= 0.
 
 ### 10.2 `market_work_situations`
+
+Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT NULL` et une FK composite vers `market_lots`. Les montants HT, TVA et TTC sont enregistrés ; le TTC validé constitue la base du prélèvement de retenue.
 
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
@@ -554,6 +582,8 @@ UNIQUE `(market_id, situation_number)`, KEY `(market_id, period_start, period_en
 
 ### 10.3 `market_amendments`
 
+Chaque avenant est rattaché au lot concerné via `lot_id` et une FK composite vers `market_lots`.
+
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
@@ -572,6 +602,8 @@ UNIQUE `(market_id, amendment_number)`, FK composites vers marché et document.
 
 ### 10.4 `market_receptions`
 
+Chaque réception est rattachée au lot concerné via `lot_id` et une FK composite vers `market_lots`.
+
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
@@ -588,6 +620,8 @@ UNIQUE `(market_id, amendment_number)`, FK composites vers marché et document.
 KEY `(market_id, reception_type, reception_date)`, FK composites vers marché et document. Plusieurs réceptions peuvent être enregistrées ; la règle de cohérence provisoire/définitive est contrôlée par le service métier.
 
 ### 10.5 `market_closures`
+
+La clôture est gérée par lot. Ajouter `lot_id` et porter l'unicité de clôture sur ce lot.
 
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
@@ -616,11 +650,12 @@ UNIQUE `(market_id)`, FK composite vers marché. CHECK montants >= 0. Les réser
 | Paramètres et numérotation | `market_settings`, `market_setting_history`, `market_number_sequences` |
 | Modèle documentaire | `market_document_templates`, `market_document_template_items` |
 | Documents et checklist | `stored_documents`, `market_document_checklist_items`, `market_document_checklist_events` |
+| Lots | `market_lots` |
 | BPU | `market_bpu_versions`, `market_bpu_items`, `market_bpu_imports` |
 | Renouvellements et alertes | `market_contract_periods`, `market_alert_rules`, `market_alerts` |
 | Exécution et clôture | `market_execution_events`, `market_work_situations`, `market_amendments`, `market_receptions`, `market_closures` |
 
-Total proposé : 25 nouvelles tables métier et deux colonnes additives sur `markets`, sous réserve de consolidation après revue du MCD.
+Total proposé : 26 nouvelles tables métier (les 25 tables précédemment listées, plus `market_lots`) et les colonnes additives nécessaires à la compatibilité, aux lots et aux instantanés de calcul. Le nombre exact de colonnes sera arrêté dans les migrations.
 
 ## 12. Ordre de création recommandé des futures migrations
 
@@ -638,6 +673,8 @@ Les clés étrangères vers `stored_documents` doivent être ajoutées après la
 ## 13. Contrôles de cohérence obligatoires
 
 - Toutes les tables de domaine possèdent `company_id` et une FK composite garantissant que le marché appartient à cette société.
+- Toute donnée propre à un lot possède `lot_id`, `market_id`, `company_id` et une FK composite vers le même lot et le même marché.
+- Un lot n° 1 est créé automatiquement ; un marché ne peut pas exister sans au moins un lot après activation du nouveau service.
 - Les organismes référencés dans `market_details` appartiennent à la même société.
 - Les fichiers référencés appartiennent au même marché et à la même société.
 - Un numéro de dossier interne est unique dans sa société.
@@ -647,23 +684,31 @@ Les clés étrangères vers `stored_documents` doivent être ajoutées après la
 - Les versions BPU sont conservées ; les lignes d'une version finale sont verrouillées.
 - Les lignes de checklist sont des instantanés indépendants du modèle.
 - Les événements de checklist sont append-only.
-- Les taux et bases de retenue sont figés par marché ; les changements de paramètres ne recalculent pas l'historique.
+- Le taux de prélèvement (10 % par défaut) et le plafond cumulé (7 % par défaut) sont configurables par société puis figés par lot.
+- Chaque situation validée prélève 10 % de son montant TTC, dans la limite du solde disponible avant le plafond de 7 % du montant TTC initial attribué au lot.
+- Les événements de retenue sont append-only ; le cumul ne peut pas dépasser le plafond.
+- Les changements de paramètres ne recalculent pas l'historique.
 - Les périodes de contrat ne se chevauchent pas sans dérogation explicite.
 - Les alertes ont une clé anti-doublon.
 - Les suppressions en cascade ne doivent jamais effacer l'historique contractuel, les pièces ou les résultats.
 - Les fichiers sont privés et téléchargés via un contrôleur autorisé.
 - Les contrôles CSRF, authentification, permissions et isolation sont côté serveur.
 
-## 14. Points à valider avant les migrations SQL
+## 14. Décisions métier consolidées et points encore ouverts
 
-1. Lots : V1 traite un marché avec un lot principal ; un marché multi-lots avec décisions et BPU indépendants nécessite une entité `market_lots`.
-2. TVA BPU : confirmer les taux autorisés et si le total HT/TVA/TTC est requis dès la V1.
-3. Retenue de garantie : confirmer la base contractuelle applicable (montant attribué, montant HT ou autre valeur du marché).
-4. Cautions : confirmer si plusieurs cautions provisoires ou définitives successives doivent être conservées ; le modèle V1 prévoit une ligne courante par type.
-5. Renouvellements : confirmer les règles de renouvellement partiel et les plafonds contractuels.
-6. Notifications : V1 prévoit des alertes internes ; e-mail ou SMS est un chantier séparé.
-7. Documents : confirmer les formats, tailles maximales et durée de conservation.
-8. Paramètres : confirmer si les taux et modèles sont propres à chaque société ou communs au groupe ; la proposition V1 est par société.
+Décisions confirmées :
+1. Lot unique créé automatiquement par défaut ; lots supplémentaires indépendants possibles.
+2. Résultats, validations, phases, BPU, cautions, périodes contractuelles et suivi d'exécution indépendants par lot.
+3. BPU calculé HT, TVA et TTC par ligne ; taux TVA conservé sur chaque ligne et montants calculés côté serveur.
+4. Retenue : 10 % du TTC de chaque situation validée, plafonnée à 7 % du montant TTC initial attribué au lot ; dernier prélèvement limité au solde du plafond.
+5. Taux et plafond modifiables dans les paramètres propres à chaque société ; instantanés historiques conservés.
+6. Cautions successives conservées sans écrasement.
+7. Paramètres communs au groupe reportés à une version ultérieure.
+
+Points ouverts :
+- Règles de renouvellement partiel ou complet.
+- Notifications internes ou e-mail/SMS.
+- Formats, tailles maximales et durée de conservation des documents.
 
 ## 15. Sécurité et déploiement
 
