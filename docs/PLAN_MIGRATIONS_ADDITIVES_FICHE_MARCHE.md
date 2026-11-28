@@ -77,7 +77,7 @@ Les scripts 007 à 011 ont été créés sur `main` comme brouillons. Ils n'ont 
 - `app/MarketLifecycle.php` : méthodes dédiées aux lots, verrouillage du lot en transaction, qualifications et validations filtrées par lot.
 - `public/index.php` : sélection du lot, routage des actions vers les méthodes lot lorsque le schéma 005 est détecté, compatibilité avec le parcours historique avant 005.
 - `resources/views/market-detail.php` : navigation entre lots, création d'un lot et affichage du cycle/historique du lot sélectionné.
-- `resources/views/markets.php` : affichage synthétique « Plusieurs lots » lorsque plusieurs états indépendants coexistent.
+- `resources/views/markets.php` et tableau de bord : affichage synthétique « Plusieurs lots » / « Phases indépendantes » lorsque plusieurs états indépendants coexistent ; les filtres de statut de la liste recherchent les marchés possédant au moins un lot dans le statut demandé.
 - Plan de tests : `docs/TESTS_FONCTIONNELS_LOTS_V1.md`.
 
 Aucun test automatisé PHP, aucun test navigateur et aucun test d'import MariaDB n'ont encore été exécutés dans cette passe.
