@@ -30,7 +30,7 @@ $layoutH = static fn ($value): string => htmlspecialchars((string) $value, ENT_Q
       </div>
       <nav class="px-3 py-4 space-y-1" aria-label="Navigation principale">
         <a href="?" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold <?= $layoutPage === 'dashboard' ? 'bg-[#ea9a10] text-white' : 'text-blue-100 hover:bg-white/10' ?>"><span>⌂</span> Tableau de bord</a>
-        <a href="?page=marches" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold <?= in_array($layoutPage, ['marches','marche_nouveau'], true) ? 'bg-[#ea9a10] text-white' : 'text-blue-100 hover:bg-white/10' ?>"><span>▤</span> Marchés</a>
+        <a href="?page=marches" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold <?= in_array($layoutPage, ['marches','marche_nouveau','marche'], true) ? 'bg-[#ea9a10] text-white' : 'text-blue-100 hover:bg-white/10' ?>"><span>▤</span> Marchés</a>
         <?php if ($layoutRole === 'GEST'): ?>
         <a href="?page=utilisateurs" class="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold <?= $layoutPage === 'utilisateurs' ? 'bg-[#ea9a10] text-white' : 'text-blue-100 hover:bg-white/10' ?>"><span>♙</span> Utilisateurs et droits</a>
         <?php endif; ?>
