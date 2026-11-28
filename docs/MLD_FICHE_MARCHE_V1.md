@@ -100,9 +100,9 @@ Complément 1:1 des informations générales du marché.
 | `market_id` | INT UNSIGNED PK/FK | Non | Marché |
 | `company_id` | INT UNSIGNED FK | Non | Société, redondance contrôlée |
 | `tender_number` | VARCHAR(100) | Non | N° appel d'offres |
-| `client_organization_id` | BIGINT UNSIGNED | Non | Maître d'ouvrage |
-| `project_manager_organization_id` | BIGINT UNSIGNED | Non | Maître d'œuvre |
-| `duration_months` | SMALLINT UNSIGNED | Non | Durée initiale en mois |
+| `client_organization_id` | BIGINT UNSIGNED | Oui | Maître d'ouvrage, à compléter |
+| `project_manager_organization_id` | BIGINT UNSIGNED | Oui | Maître d'œuvre, à compléter |
+| `duration_months` | SMALLINT UNSIGNED | Oui | Durée initiale en mois |
 | `is_renewable` | TINYINT(1) | Non | Oui/non |
 | `renewal_duration_years` | SMALLINT UNSIGNED | Oui | Obligatoire si renouvelable |
 | `market_nature` | VARCHAR(20) | Oui | Travaux, fournitures, services |
@@ -150,14 +150,14 @@ Données d'étude 1:1.
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
-| `launch_date` | DATE | Non | Date de lancement |
-| `offer_deadline_at` | DATETIME | Non | Date/heure limite de remise |
-| `opening_at` | DATETIME | Non | Date/heure ouverture des plis |
+| `launch_date` | DATE | Oui | Date de lancement |
+| `offer_deadline_at` | DATETIME | Oui | Date/heure limite de remise |
+| `opening_at` | DATETIME | Oui | Date/heure ouverture des plis |
 | `study_validated_at` | DATETIME | Oui | Validation de prise en charge |
 | `study_started_at` | DATETIME | Oui | Début étude |
 | `study_completed_at` | DATETIME | Oui | Étude terminée le |
 | `study_cost` | DECIMAL(15,2) | Non | Charges d'étude DH, défaut 0 |
-| `estimated_cost` | DECIMAL(15,2) | Non | Coût estimatif DH |
+| `estimated_cost` | DECIMAL(15,2) | Oui | Coût estimatif DH |
 | `study_manager_user_id` | INT UNSIGNED FK users | Oui | Chargé d'étude |
 | `observations` | TEXT | Oui | Observations |
 | `created_at` | DATETIME | Non | Création |
@@ -179,8 +179,8 @@ Dépôt de l'offre, 0:1 par marché en V1.
 | `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
 | `market_id` | INT UNSIGNED | Non | Marché |
 | `company_id` | INT UNSIGNED | Non | Société |
-| `deposited_by` | INT UNSIGNED FK users | Non | Chargé de dépôt |
-| `deposited_at` | DATETIME | Non | Date/heure réelle du dépôt |
+| `deposited_by` | INT UNSIGNED FK users | Oui | Chargé de dépôt, renseigné à la phase 4 |
+| `deposited_at` | DATETIME | Oui | Date/heure réelle du dépôt |
 | `observations` | TEXT | Oui | Observations |
 | `proof_document_id` | BIGINT UNSIGNED | Oui | Preuve de dépôt |
 | `created_at` | DATETIME | Non | Création |
@@ -189,7 +189,7 @@ Dépôt de l'offre, 0:1 par marché en V1.
 Index et contraintes :
 - UNIQUE `(market_id)`.
 - UNIQUE `(id, market_id, company_id)`.
-- FK composite vers `markets(id, company_id)`.
+- FK composite `(market_id, company_id)` vers `markets(id, company_id)`.
 - FK `deposited_by → users.id`.
 - FK composite `(proof_document_id, market_id, company_id)` vers `stored_documents(id, market_id, company_id)`, à créer après `stored_documents`.
 
@@ -210,8 +210,8 @@ Informations propres à l'attribution et au contrat, 0:1 par lot. Ajouter `lot_i
 | `notification_date` | DATE | Oui | Date de notification |
 | `retention_rate_percent` | DECIMAL(5,2) | Non | Instantané du taux de prélèvement (défaut 10 %) |
 | `retention_cap_percent` | DECIMAL(5,2) | Non | Instantané du plafond (défaut 7 %) |
-| `retention_base_amount_ttc` | DECIMAL(15,2) | Non | Montant TTC initial attribué au lot |
-| `retention_cap_amount_ttc` | DECIMAL(15,2) | Non | Plafond monétaire calculé à 7 % du TTC attribué |
+| `retention_base_amount_ttc` | DECIMAL(15,2) | Oui | Montant TTC initial attribué au lot, renseigné après validation |
+| `retention_cap_amount_ttc` | DECIMAL(15,2) | Oui | Plafond monétaire calculé à 7 % du TTC attribué |
 | `retention_base_code` | VARCHAR(30) | Non | `awarded_amount_ttc` |
 | `created_at` | DATETIME | Non | Création |
 | `updated_at` | DATETIME | Non | Modification |
