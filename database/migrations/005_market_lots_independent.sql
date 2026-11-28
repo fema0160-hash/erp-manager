@@ -8,8 +8,9 @@
 --   - schéma réel comparé au dépôt et précontrôles exécutés ;
 --   - sauvegarde complète vérifiée et restauration testée ;
 --   - version applicative compatible avec market_lots déployée dans la même
---     fenêtre de maintenance. Le code actuel fonctionne au niveau MARKET et
---     doit être adapté pour lire/écrire l'état du LOT avant d'utiliser ce schéma.
+--     fenêtre de maintenance. Une première adaptation du service, des routes,
+--     des vues et du tableau de bord est présente sur main ; elle reste à tester
+--     sur copie MariaDB et dans le navigateur avant toute installation.
 --
 -- CIBLE : MariaDB 10.4.32 / InnoDB / utf8mb4.
 -- DDL MariaDB avec commits implicites : en cas d'échec, ARRÊTER, inspecter le
@@ -205,11 +206,11 @@ WHERE l.lot_number = 1
 -- SHOW CREATE TABLE market_transitions;
 
 -- ÉTAPES APPLICATIVES OBLIGATOIRES AVANT MISE EN SERVICE :
--- A. MarketLifecycle doit recevoir lot_id et lire/mettre à jour market_lots.
+-- A. Le service MarketLifecycle utilise désormais lot_id et lit/met à jour market_lots ; vérifier le comportement sur copie de test.
 -- B. Les qualifications et validations doivent être verrouillées par lot.
 -- C. La validation d'un résultat doit mettre à jour market_lots.lifecycle_status,
 --    lifecycle_phase et official_result_qualification_id.
--- D. Les phases 1→5 doivent rester utilisables pour le lot n° 1 et les lots ajoutés.
+-- D. Les phases 1→5 doivent rester utilisables pour le lot n° 1 et les lots ajoutés ; vérifier aussi la compatibilité avant 005.
 -- E. Les transitions 6→8 ne doivent être autorisées que pour le lot attribué.
 -- F. Les listes, fiches, tableaux de bord et contrôles d'accès doivent filtrer
 --    les lots selon le marché et la société.
