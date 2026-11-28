@@ -168,7 +168,7 @@
           <div id="quickActionsBar" class="flex flex-wrap items-center gap-2 shrink-0 no-print">
             <button type="button" onclick="filterByStatus('ALL')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#0f294a] text-white hover:bg-[#163a68] transition shadow-sm">Tous les marchés (<span id="totalCountAction">0</span>)</button>
             <button type="button" onclick="filterByStatus('en_cours')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-amber-500/15 text-amber-900 border border-amber-300 hover:bg-amber-500/25 transition">En cours</button>
-            <button type="button" onclick="filterByStatus('gagne')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 text-emerald-900 border border-emerald-300 hover:bg-emerald-500/25 transition">Gagnés</button>
+            <button type="button" onclick="filterByStatus('attribue')" class="px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-500/15 text-emerald-900 border border-emerald-300 hover:bg-emerald-500/25 transition">Attribués</button>
           </div>
         </section>
 
