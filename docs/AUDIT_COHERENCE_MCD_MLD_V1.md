@@ -3,111 +3,149 @@ Référence : erp-manager/docs/AUDIT_COHERENCE_MCD_MLD_V1.md
 # Audit de cohérence MCD / MLD — fiche marché
 
 - Dépôt : `fema0160-hash/erp-manager`
-- Branche auditée : `main`
+- Branche : `main`
 - Cible : MariaDB 10.4.32 / InnoDB / utf8mb4
-- Méthode : lecture statique des migrations 001 à 004, du service `MarketLifecycle`, du contrôleur `public/index.php`, du MCD V1 et du MLD V1.
-- Limite : aucun accès à la base XAMPP ou à une base distante n'a été effectué ; aucune migration n'a été exécutée.
+- Révision : MCD/MLD consolidés après arbitrages métier
+- Méthode : lecture statique des migrations 001 à 006, du service `MarketLifecycle`, du contrôleur `public/index.php), du MCD et du MLD versionnés.
+- Limite : aucune connexion à la base XAMPP ou distante ; aucun SQL exécuté ; aucune preuve d'installation des migrations locales ou de production.
 
-## 1. Conclusion générale
+## 1. Conclusion
 
-**Audit documentaire et statique : non validé pour génération/exécution immédiate des migrations.**
+**Conception consolidée sur les décisions métier reçues ; migrations 005 et 006 préparées en brouillon. Aucune migration n'est autorisée à l'exécution.**
 
-Le socle SQL 001 à 003 est cohérent avec les types fondamentaux utilisés dans les propositions : `companies.id`, `markets.id`, `markets.company_id` et `users.id` sont en `INT UNSIGNED` ; les identifiants des historiques sont en `BIGINT UNSIGNED`. Les clés étrangères simples de la migration 004 utilisent des types compatibles.
+Les décisions relatives aux lots, à la TVA, à la retenue TTC, aux cautions successives et au périmètre des paramètres sont intégrées dans le MCD/MLD.
 
-Le MLD V1 doit cependant être corrigé sur les lots, les cautions successives, la retenue de garantie et certaines relations composites avant de produire des scripts SQL définitifs.
+Le contrôle statique confirme les types fondamentaux des migrations 001 à 004 et la cohérence des principales clés candidates proposées. Il reste néanmoins une étape d'audit SQL ligne par ligne sur les migrations 007 et suivantes, ainsi qu'un essai sur copie de base, avant toute demande d'installation.
 
-## 2. Décisions métier reçues
+## 2. Décisions métier consolidées
 
-Les règles suivantes remplacent les points « à arbitrer » correspondants du MCD/MLD V1 :
+1. **Lots** : création automatique d'un lot n° 1 à la création du marché. Possibilité d'ajouter plusieurs lots. Résultat, validation, phases, BPU, attribution, cautions, contrat, retenue et suivi d'exécution sont indépendants par lot.
+2. **BPU / TVA** : calcul par ligne en HT, TVA et TTC. Le taux de TVA est conservé par ligne ; les montants sont recalculés côté serveur. Le total de chaque version est la somme des lignes.
+3. **Retenue de garantie** :
+   - prélèvement initial : 10 % du TTC de chaque situation de travaux validée ;
+   - plafond cumulé : 7 % du montant TTC initial attribué au lot ;
+   - dernier prélèvement limité au solde disponible avant plafond ;
+   - taux et plafond modifiables dans les paramètres propres à chaque société ;
+   - instantanés et événements de calcul conservés ; aucune modification rétroactive.
+4. **Cautions** : plusieurs cautions successives provisoires ou définitives sont conservées. Une caution remplacée n'est jamais écrasée.
+5. **Paramètres** : paramètres par société en V1. Les paramètres communs au groupe sont reportés à une étape ultérieure.
 
-1. **Lots** : un seul lot est créé automatiquement par défaut. Le modèle doit permettre d'ajouter plusieurs lots indépendants ensuite. Chaque lot doit disposer de son BPU, de son résultat et de son avancement de cycle indépendants.
-2. **BPU / TVA** : chaque ligne est calculée en HT, TVA et TTC. Le taux de TVA est enregistré par ligne ; les montants sont calculés côté serveur et les totaux de version sont la somme des lignes.
-3. **Retenue de garantie** : taux de prélèvement initial de 10 %, plafond de 7 %, tous deux modifiables dans les paramètres. Les valeurs appliquées à un marché doivent être figées pour préserver l'historique.
-4. **Cautions** : plusieurs cautions successives du même type doivent être conservées comme des enregistrements distincts ; aucune caution remplacée ne doit être écrasée.
-5. **Paramètres** : paramètres propres à chaque société dans la première version. Les paramètres communs au groupe sont reportés à une étape ultérieure.
-
-## 3. Contrôle des migrations existantes
+## 3. Contrôle des migrations 001 à 004
 
 ### Migration 001 — sociétés et marchés
 
 - `companies.id`, `markets.id` et `markets.company_id` sont en `INT UNSIGNED`.
 - `markets.id` est la clé primaire ; `markets.company_id` référence `companies.id`.
-- `markets.reference` est unique globalement dans le schéma initial. Le futur numéro interne par société doit rester distinct et ne doit pas remplacer cette référence sans migration de compatibilité.
-- Le schéma initial ne contient pas de clé unique `(markets.id, markets.company_id)`. Elle est nécessaire avant les clés étrangères composites proposées.
+- `markets.reference` est globalement unique dans le schéma initial et reste conservé pour compatibilité.
+- La clé candidate `UNIQUE(markets.id, markets.company_id)` n'existe pas dans 001 ; elle est ajoutée par la migration 005 pour les relations composites.
 
 ### Migration 002 — utilisateurs et permissions
 
 - `users.id` et `permissions.id` sont en `INT UNSIGNED`.
-- Les restrictions utilisateur sont facultatives ; les permissions fonctionnelles sont accordées par défaut par le service d'authentification.
-- Les futures références d'audit à un utilisateur doivent utiliser `ON DELETE RESTRICT` afin de conserver les historiques.
+- Les restrictions d'accès sont facultatives ; les permissions fonctionnelles sont accordées par défaut par le service d'authentification.
+- Les références d'audit vers les utilisateurs utilisent `ON DELETE RESTRICT` dans les nouvelles tables afin de préserver l'historique.
 
 ### Migration 003 — cycle de vie
 
-- Ajoute les colonnes `lifecycle_status` et `lifecycle_phase` à `markets`.
-- Crée `market_transitions` avec `id BIGINT UNSIGNED`, `market_id INT UNSIGNED` et `changed_by INT UNSIGNED`.
-- Les données historiques restent dans les anciennes colonnes ; la migration copie l'état normalisé dans l'historique.
-- Les phases 1 à 5 utilisent actuellement les colonnes de cycle au niveau du marché.
+- Ajoute `lifecycle_status` et `lifecycle_phase` à `markets`.
+- Crée `market_transitions` avec `id BIGINT UNSIGNED`, `market_id INT UNSIGNED) et `changed_by INT UNSIGNED`.
+- Les anciennes colonnes `status` et `phase` sont conservées.
+- Le code actuel gère le cycle au niveau du marché ; le futur code doit déplacer l'état opérationnel au niveau du lot sans perdre l'état historique.
 
 ### Migration 004 — qualification et validation
 
-Fichier présent : `database/migrations/004_result_qualification_validation.sql`.
+Fichier : `database/migrations/004_result_qualification_validation.sql`.
 
-- Le script crée `market_result_qualifications` et `market_result_validations`.
-- Il ajoute `qualification_id` à `market_transitions` et `official_result_qualification_id` à `markets`.
-- Les index composites prévus pour les références `(qualification_id, market_id)` et `(id, market_id)` sont cohérents entre eux dans la version actuelle.
-- Le contrôleur vérifie la présence des deux tables, des deux colonnes, des deux contraintes et des quatre permissions avant d'autoriser les opérations qui en dépendent.
-- La présence du fichier dans Git ne prouve pas son installation dans la base locale ou en production.
+- Crée `market_result_qualifications` et `market_result_validations`.
+- Ajoute `qualification_id` à `market_transitions) et `official_result_qualification_id` à `markets`.
+- Les références composites qualification/marché sont cohérentes dans le fichier.
+- Le contrôleur vérifie la présence des deux tables, des deux colonnes, des deux contraintes et des quatre permissions.
+- La présence du fichier dans Git ne prouve pas son installation en base.
 
-**Point bloquant :** la migration 004 et le service `MarketLifecycle` actuels gèrent un résultat au niveau du marché entier. Ils ne gèrent pas encore un résultat, un BPU et un cycle indépendants par lot. La migration 004 doit donc être révisée avant installation pour intégrer le lot par défaut et les références de qualification par lot ; le service et les contrôles de disponibilité du contrôleur devront être adaptés en conséquence.
+**Disponibilité confirmée dans le code actuel :**
+- Sans migration 004, l'avancement séquentiel des phases 1→2→3→4→5 reste autorisé.
+- Sans migration 004, les qualifications, validations et les opérations des phases 6 à 8 sont bloquées avec un message indiquant que la migration 004 est requise.
+- L'installation de 004 reste soumise à une sauvegarde vérifiée et à une autorisation explicite.
 
-## 4. Écarts de cohérence identifiés dans le MLD V1
+**Limite fonctionnelle actuelle :** la version courante de `MarketLifecycle` qualifie encore un résultat au niveau du marché. La gestion indépendante par lot nécessite la migration 005 ET une version applicative adaptée. La migration 004 n'est pas réécrite rétroactivement : elle reste le prérequis du mécanisme de qualification ; 005 lui ajoute le rattachement aux lots.
 
-| Réf. | Écart | Correction nécessaire |
-|---|---|---|
-| C01 | Aucun objet `market_lots` ; `lot_reference` et `lot_label` sont placés dans `market_details` | Créer `market_lots`, créer automatiquement le lot n° 1 et déplacer les données de lot dans cette entité |
-| C02 | Résultat et phase stockés au niveau du marché | Porter l'état et la phase courants sur chaque lot ; rattacher qualifications et transitions au lot |
-| C03 | BPU non rattaché à un lot | Ajouter `lot_id` aux versions BPU, lignes/imports selon le modèle retenu et garantir le même marché/société |
-| C04 | `UNIQUE(market_id, guarantee_type)` limite à une caution de chaque type | Remplacer par un numéro de séquence et conserver chaque caution successivement ; prévoir un lien facultatif vers la caution remplacée |
-| C05 | Le calcul de retenue n'exprime pas séparément prélèvement et plafond | Paramétrer le taux de prélèvement (10 %) et le plafond (7 %) ; figer les deux valeurs et la base monétaire dans le dossier |
-| C06 | Les paramètres sont par société, mais la proposition n'explicite pas le report des paramètres de groupe | Conserver le périmètre société en V1 ; traiter le niveau groupe dans une version ultérieure |
-| C07 | La règle de cohérence société de `market_alerts.rule_id` n'est pas garantie par une FK composite | Ajouter une clé unique `(id, company_id)` sur les règles et une FK composite depuis les alertes |
-| C08 | Plusieurs tables référencent des documents ou des enfants sans préciser partout la clé composite complète | Vérifier chaque FK sur `(id, market_id, company_id)` et l'ordre de création des tables dans les migrations |
-| C09 | Les champs de service order et notification sont déclarés obligatoires dès la création du détail d'attribution | Autoriser leur valeur NULL jusqu'à réception effective des informations, puis valider côté application au passage concerné |
-| C10 | Le MCD et le MLD ne décrivent pas encore un cycle indépendant par lot | Ajouter les associations LOT–BPU–QUALIFICATION–VALIDATION–TRANSITION–ATTRIBUTION–EXÉCUTION |
+## 4. Contrôle des nouvelles migrations préparées
 
-## 5. Contrôle de compatibilité MariaDB 10.4.32
+### Migration 005 — `005_market_lots_independent.sql`
 
-Les constructions utilisées dans les propositions sont compatibles en principe avec MariaDB 10.4.32 sous InnoDB, sous réserve de leur définition exacte :
+<badge> BROUILLON — NON EXÉCUTÉ </badge>
 
-- types entiers signés/non signés strictement identiques entre colonnes FK et colonnes référencées ;
-- clés étrangères composites appuyées par un index dans le même ordre ;
-- clé unique explicite sur chaque tuple référencé, par exemple `(id, company_id)` ou `(id, market_id, company_id)` ;
-- `DECIMAL` pour les montants et taux, jamais `FLOAT` ;
-- contraintes `CHECK` pour les validations simples de ligne ;
-- contraintes métier inter-tables (plafond cumulé, unicité d'un lot par marché, une seule version BPU finale, absence de chevauchement de périodes) contrôlées transactionnellement par le service applicatif, car elles ne se résument pas à un `CHECK` de ligne.
+- Ajoute la clé candidate `UNIQUE(markets.id, markets.company_id)`.
+- Crée `market_lots` avec clé `BIGINT UNSIGNED), numéro séquentiel, état et phase propres au lot.
+- Crée le lot n° 1 de chaque marché existant en copiant son état normalisé actuel.
+- Ajoute `lot_id` et `company_id` aux qualifications existantes et les rattache au lot n° 1.
+- Ajoute `lot_id` et `company_id` aux transitions existantes et les rattache au lot n° 1 ; les transitions de qualification sont rattachées au même lot que leur qualification.
+- Ajoute le résultat officiel au niveau du lot tout en conservant le pointeur historique au niveau de `markets`.
+- N'invente aucun résultat et ne supprime aucune donnée historique.
 
-Les scripts doivent tenir compte des commits implicites des DDL MariaDB : une migration partiellement exécutée ne doit jamais être relancée aveuglément. Chaque migration devra comporter ses prérequis, contrôles avant/après et procédure d'arrêt en cas d'échec.
+**Condition importante :** ne pas exécuter 005 seule avec le code actuel. Le service, les contrôleurs, les vues et les listes doivent être adaptés au lot avant d'utiliser les nouvelles colonnes. Le script exige 004 déjà installée.
 
-## 6. Migration 004 et disponibilité fonctionnelle
+### Migration 006 — `006_market_core_details.sql`
 
-État du code versionné :
+<badge> BROUILLON — NON EXÉCUTÉ </badge>
 
-- Le service documente explicitement que les qualifications, validations et transitions après la phase 5 nécessitent la migration 004.
-- Le contrôleur permet la progression séquentielle 1→2→3→4→5 sans exiger la migration 004.
-- Si le schéma 004 n'est pas détecté, le contrôleur bloque les qualifications, validations et opérations de phase 6 à 8 avec un message explicite.
-- Après ajout de la gestion indépendante des lots, ces vérifications devront aussi contrôler la table des lots et les nouvelles colonnes/contraintes de qualification par lot.
+- Ajoute le numéro interne et la date de modification du marché.
+- Crée les paramètres par société et leur historique.
+- Initialise les paramètres de retenue à 10 % et 7 % pour chaque société disposant du compte GEST attendu.
+- Crée le compteur atomique de numérotation par société/année.
+- Crée les organismes, les détails généraux, les informations d'étude, le dépôt et les détails d'attribution par lot.
+- Les champs non disponibles au début du dossier restent NULL jusqu'à leur saisie.
+- Les données d'attribution conservent un instantané du taux, du plafond et de la base TTC.
 
-**Règle de déploiement :** sauvegarde complète vérifiée, essai sur copie, inspection du schéma réel, puis autorisation explicite avant toute exécution. Ce rapport ne constitue pas une autorisation.
+**Dépendance :** 006 exige 005 et suppose que `market_lots` existe.
 
-## 7. Ordre de travail avant mise en service
+## 5. Relations et contraintes MariaDB 10.4.32
 
-1. Corriger et consolider le MCD/MLD selon les décisions de la section 2.
-2. Réviser la migration 004 pour intégrer le lot par défaut et les résultats indépendants par lot.
-3. Adapter `MarketLifecycle` et `public/index.php` au cycle par lot tout en conservant les marchés historiques.
-4. Produire les migrations additives suivantes, dans un ordre FK-compatible, pour les organismes, détails, études, documents, checklist, cautions, BPU, périodes, alertes, exécution et clôture.
-5. Auditer chaque script SQL et ses contrôles de compatibilité MariaDB 10.4.32.
-6. Tester toutes les migrations sur une copie de sauvegarde avant toute demande d'installation.
+Contrôles de conception effectués :
 
-## 8. Limites de cet audit
+- Les colonnes FK utilisent les mêmes types et attributs signés/non signés que leurs clés cibles.
+- Les identifiants des sociétés et marchés restent en `INT UNSIGNED) ; les identifiants des lots, organismes et historiques sont en `BIGINT UNSIGNED).
+- Les références composites sont appuyées par des index uniques dans le même ordre.
+- Les montants et taux utilisent `DECIMAL), jamais `FLOAT`.
+- Les contraintes `CHECK` portent sur les règles de ligne ; les plafonds cumulés, états en attente et non-chevauchements sont contrôlés transactionnellement par l'application.
+- Les suppressions d'historique, de lots ayant des opérations ou de documents référencés sont empêchées par `RESTRICT`.
+- Les clés composites marché/société et lot/marché/société garantissent que les objets enfants restent rattachés au bon périmètre.
 
-Cet audit est statique et porte sur les fichiers versionnés dans GitHub `main`. Il ne confirme ni la version réelle de la base connectée, ni l'état d'installation des migrations, ni les données existantes de XAMPP. Il ne modifie aucune base de données et n'exécute aucun SQL.
+Points techniques à vérifier sur une copie MariaDB avant installation :
+
+1. Résultat exact de `SHOW CREATE TABLE` pour toutes les tables 001 à 004.
+2. Présence/absence réelle de chaque index, colonne et contrainte attendus avant DDL.
+3. Compatibilité effective de chaque FK composite après création de son index candidat.
+4. Nombre de marchés, qualifications et transitions avant/après migration 005.
+5. Nombre de sociétés et présence du compte `gest` avant l'initialisation des paramètres 006.
+6. Reprise contrôlée si un DDL échoue après un commit implicite.
+
+## 6. Écarts encore à traiter dans les prochaines migrations
+
+| Domaine | Travail SQL restant |
+|---|---|
+| Documents | `stored_documents`, modèles documentaires, checklist, historique des coches |
+| Cautions | cautions successives, numéros de séquence, lien de remplacement et pièces |
+| Retenue | événements append-only par situation validée, calcul TTC et plafond cumulé |
+| BPU | versions, lignes, imports, calcul HT/TVA/TTC et verrouillage par lot |
+| Contrat | périodes, renouvellements, alertes et règles de non-chevauchement |
+| Exécution | événements chantier, situations de travaux, avenants, réceptions et clôture par lot |
+
+Ces scripts ne sont pas déclarés prêts tant que leurs clés composites et dépendances documentaires n'ont pas été relues et testées.
+
+## 7. Ordre de déploiement proposé
+
+1. Vérifier la base réelle et l'état des migrations 001 à 004.
+2. Sauvegarder puis restaurer la sauvegarde dans une base de test.
+3. Adapter l'application au cycle par lot tout en conservant la compatibilité des marchés existants.
+4. Tester migration 005 sur la copie.
+5. Tester migration 006 sur la copie.
+6. Préparer et auditer les migrations 007 et suivantes.
+7. Réaliser les tests fonctionnels, d'isolation multi-sociétés et de non-régression.
+8. Demander une autorisation explicite avant toute installation sur la base de travail ou de production.
+
+## 8. Limites et sécurité
+
+Cet audit est statique. Il ne confirme ni la version réelle de la base locale, ni l'installation des migrations, ni l'intégrité des données XAMPP. Aucune migration n'a été exécutée. Aucun fichier de configuration local n'a été modifié.
+
+La présence d'un fichier SQL dans GitHub n'est jamais une autorisation d'exécution.
