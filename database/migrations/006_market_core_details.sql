@@ -72,8 +72,9 @@ CREATE TABLE market_setting_history (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- Initialisation des deux paramètres de retenue pour chaque société.
--- Le compte GEST sert d'auteur technique de la valeur initiale ; s'il n'existe
--- pas, le contrôle préalable doit échouer et l'installation doit être arrêtée.
+-- Le compte GEST sert d'auteur technique de la valeur initiale. Si ce compte
+-- est absent, les INSERT ne créent aucune ligne : le précontrôle doit donc
+-- vérifier explicitement son existence avant l'exécution.
 INSERT INTO market_settings (company_id, setting_key, setting_value, value_type, updated_by)
 SELECT c.id, 'retention_rate_percent', '10.00', 'decimal', u.id
 FROM companies c
