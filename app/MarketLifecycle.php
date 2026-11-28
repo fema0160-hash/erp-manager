@@ -348,15 +348,19 @@ final class MarketLifecycle
         return $q->fetch() ?: null;
     }
 
-    public static function history(PDO $pdo, int $marketId): array
+    public static function history(PDO $pdo, int $marketId, bool $includeQualificationDetails = true): array
     {
-        $q = $pdo->prepare(
-            'SELECT t.*, u.display_name AS actor_name, q.result_code
-             FROM market_transitions t
-             LEFT JOIN users u ON u.id = t.changed_by
-             LEFT JOIN market_result_qualifications q ON q.id = t.qualification_id
-             WHERE t.market_id = :market_id ORDER BY t.changed_at DESC, t.id DESC'
-        );
+        $sql = $includeQualificationDetails
+            ? 'SELECT t.*, u.display_name AS actor_name, q.result_code
+               FROM market_transitions t
+               LEFT JOIN users u ON u.id = t.changed_by
+               LEFT JOIN market_result_qualifications q ON q.id = t.qualification_id
+               WHERE t.market_id = :market_id ORDER BY t.changed_at DESC, t.id DESC'
+            : 'SELECT t.*, u.display_name AS actor_name, NULL AS result_code
+               FROM market_transitions t
+               LEFT JOIN users u ON u.id = t.changed_by
+               WHERE t.market_id = :market_id ORDER BY t.changed_at DESC, t.id DESC';
+        $q = $pdo->prepare($sql);
         $q->execute(['market_id' => $marketId]);
         return $q->fetchAll();
     }
