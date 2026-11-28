@@ -86,7 +86,7 @@ CREATE TABLE market_lots (
 --    distincts de markets.reference qui demeure la référence historique.
 INSERT INTO market_lots (
     market_id, company_id, lot_number, lot_reference, lot_label,
-    lifecycle_status, lifecycle_phase, created_at, updated_at
+    lifecycle_status, lifecycle_phase, awarded_amount, created_at, updated_at
 )
 SELECT
     m.id,
@@ -96,6 +96,7 @@ SELECT
     'Lot unique',
     m.lifecycle_status,
     m.lifecycle_phase,
+    m.awarded_amount,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
 FROM markets m
