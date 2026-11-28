@@ -126,12 +126,50 @@ const STATUS_META = {
 
 const MARCHES_DATA = Array.isArray(ERP_DATA.markets) ? ERP_DATA.markets : [];
 
+const DASHBOARD_RELOAD_STATE_KEY = 'erp-manager.dashboard.reload-state';
+const dashboardNavigation = performance.getEntriesByType('navigation')[0];
+const isDashboardReload = dashboardNavigation?.type === 'reload';
+if ('scrollRestoration' in window.history) window.history.scrollRestoration = 'manual';
+
+let savedDashboardState = null;
+if (isDashboardReload) {
+  try {
+    savedDashboardState = JSON.parse(sessionStorage.getItem(DASHBOARD_RELOAD_STATE_KEY) || 'null');
+    sessionStorage.removeItem(DASHBOARD_RELOAD_STATE_KEY);
+  } catch (_) {
+    savedDashboardState = null;
+  }
+}
+
+const validSavedCompany = savedDashboardState?.company === 'ALL'
+  || COMPANIES.some(company => company.id === savedDashboardState?.company);
+const validSavedStatus = savedDashboardState?.statusFilter === 'ALL'
+  || Object.prototype.hasOwnProperty.call(STATUS_META, savedDashboardState?.statusFilter);
+const validSavedPhase = savedDashboardState?.phaseFilter === 'ALL'
+  || (Number.isInteger(savedDashboardState?.phaseFilter)
+    && savedDashboardState.phaseFilter >= 1 && savedDashboardState.phaseFilter <= 8);
+
 let state = {
   variant: 'B',
-  company: 'ALL',
-  statusFilter: 'ALL',
-  phaseFilter: 'ALL'
+  company: validSavedCompany ? savedDashboardState.company : 'ALL',
+  statusFilter: validSavedStatus ? savedDashboardState.statusFilter : 'ALL',
+  phaseFilter: validSavedPhase ? savedDashboardState.phaseFilter : 'ALL'
 };
+
+window.addEventListener('pagehide', () => {
+  try {
+    sessionStorage.setItem(DASHBOARD_RELOAD_STATE_KEY, JSON.stringify({
+      company: state.company,
+      statusFilter: state.statusFilter,
+      phaseFilter: state.phaseFilter,
+      search: document.getElementById('searchInput')?.value || '',
+      scrollX: window.scrollX,
+      scrollY: window.scrollY
+    }));
+  } catch (_) {
+    // Le tableau de bord reste utilisable même si le stockage de session est indisponible.
+  }
+});
 
 let doughnutChartInstance = null;
 
@@ -536,5 +574,25 @@ window.addEventListener('DOMContentLoaded', () => {
     if (banner) banner.innerHTML = '<div class="text-sm text-red-900"><strong>Connexion à la base de données impossible.</strong> Vérifiez config/database.local.php et que MySQL est démarré.</div>';
   }
   renderCompanySelectors();
+  const scope = getCompanyById(state.company);
+  const breadcrumbScope = document.getElementById('breadcrumbScope');
+  const scopePill = document.getElementById('scopePill');
+  const welcomeScopeTitle = document.getElementById('welcomeScopeTitle');
+  if (breadcrumbScope) breadcrumbScope.textContent = state.company === 'ALL' ? 'Vue Groupe (toutes les sociétés)' : scope.name;
+  if (scopePill) scopePill.textContent = 'Périmètre : ' + (state.company === 'ALL' ? 'Vue Groupe' : scope.short);
+  if (welcomeScopeTitle) welcomeScopeTitle.textContent = state.company === 'ALL' ? 'Vue Groupe (' + COMPANIES.length + ' sociétés)' : scope.name;
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput && typeof savedDashboardState?.search === 'string') searchInput.value = savedDashboardState.search;
+
   setVariant('B');
+
+  if (isDashboardReload && Number.isFinite(savedDashboardState?.scrollY)) {
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      window.scrollTo({
+        left: Number.isFinite(savedDashboardState?.scrollX) ? savedDashboardState.scrollX : 0,
+        top: Math.max(0, savedDashboardState.scrollY),
+        behavior: 'instant'
+      });
+    }));
+  }
 });

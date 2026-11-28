@@ -10,14 +10,10 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Chargement de Chart.js pour la visualisation en anneau -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-  <!-- Police Inter pour une lisibilité claire sur web et mobile -->
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
   <style>
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background-color: #f8fafc;
       color: #0f172a;
     }
@@ -108,8 +104,8 @@
           </div>
 
           <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
-            <div class="hidden md:flex items-center gap-2 text-xs text-slate-600 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200/70">
-              <span id="liveDate">27/11/2026</span><span class="text-slate-300">|</span><span id="liveClock" class="font-semibold text-slate-800">19:55:00</span>
+            <div class="hidden md:flex shrink-0 items-center gap-2 whitespace-nowrap text-xs text-slate-600 bg-slate-100 px-3 py-2 rounded-xl border border-slate-200/70">
+              <span id="liveDate" class="whitespace-nowrap tabular-nums">27/11/2026</span><span class="text-slate-300">|</span><span id="liveClock" class="whitespace-nowrap tabular-nums font-semibold text-slate-800">19:55:00</span>
             </div>
             <div class="flex items-center gap-1.5">
               <label for="topbarCompanySelect" class="sr-only">Filtrer par entreprise</label>
