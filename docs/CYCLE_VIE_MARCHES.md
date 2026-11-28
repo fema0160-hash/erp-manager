@@ -100,3 +100,46 @@ Les migrations 003 et 004 préparent les statuts normalisés, les huit phases, l
 - Les issues définitives sont consultables sans modification ordinaire.
 - La réouverture GEST exige un motif et laisse une trace.
 - Les données existantes sont migrées de manière documentée et vérifiable.
+
+## 10. Présentation visuelle de la fiche
+
+Le diagramme du cycle de vie est affiché en haut de la fiche marché, sous forme de deux rangées horizontales :
+
+### Rangée 1 — Huit phases
+
+Les huit phases sont affichées sur une seule et même ligne, dans cet ordre :
+
+1. Préparation
+2. Étude et BPU
+3. Préparation de la soumission
+4. Soumis
+5. Attente du résultat
+6. Préparation du marché attribué
+7. Exécution et suivi du chantier
+8. Clôturé et archivé
+
+Sur ordinateur, les huit phases ne doivent jamais être réparties sur plusieurs rangées. Les libellés peuvent être coupés sur plusieurs lignes à l'intérieur de leur cellule. Sur mobile, conserver la rangée unique avec défilement horizontal.
+
+### Rangée 2 — Quatre décisions après la phase 5
+
+Les quatre décisions sont affichées sur une deuxième ligne unique, sous les phases :
+
+| Décision | Sous-texte | Action |
+|---|---|---|
+| Attribué | Poursuite vers la phase 6 | Continuer |
+| Perdu | Fin du parcours normal | Terminé |
+| Annulé | Fin du parcours normal | Terminé |
+| Infructueux | Fin du parcours normal | Terminé |
+
+Les quatre décisions sont visibles dans le diagramme, mais ne peuvent être sélectionnées qu'après l'arrivée en phase 5. Seule une attribution validée permet de continuer vers la phase 6.
+
+### États visuels
+
+- Phase terminée : état visuel « Terminée ».
+- Phase courante : état visuel « En cours ».
+- Phase future : état visuel « À venir ».
+- Décision attribuée : branche positive vers la phase 6.
+- Décisions perdu, annulé et infructueux : fin du parcours normal, dossier consultable.
+
+Les couleurs, les états, les dates et la progression doivent être calculés depuis les données enregistrées. Ils ne doivent pas être codés en dur. Les deux rangées restent chacune sur une seule ligne ; sur petit écran, elles sont défilables horizontalement.
+
