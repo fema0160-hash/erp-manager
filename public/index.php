@@ -503,7 +503,7 @@ if ($page === 'marches' || $page === 'marche_nouveau') {
 
                 if ($lotsSchemaReady) {
                     $sql = 'SELECT m.id, m.reference, m.object, m.company_id, c.name AS company_name,
-                                   CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_status) ELSE "multi_lots" END AS status,
+                                   CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_status) ELSE \'multi_lots\' END AS status,
                                    CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_phase) ELSE 0 END AS phase,
                                    COUNT(l.id) AS lot_count,
                                    m.amount, m.market_date, m.is_demo
@@ -591,7 +591,7 @@ try {
         if (MarketLifecycle::lotsSchemaReady($pdo)) {
             $marketQuery = $pdo->prepare(
                 'SELECT m.reference, m.object, m.company_id, c.code AS company_code,
-                        CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_status) ELSE "multi_lots" END AS status,
+                        CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_status) ELSE \'multi_lots\' END AS status,
                         CASE WHEN COUNT(l.id) = 1 THEN MAX(l.lifecycle_phase) ELSE 0 END AS phase,
                         m.amount, m.market_date, m.is_demo
                  FROM markets m
