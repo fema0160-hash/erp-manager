@@ -277,11 +277,20 @@ if ($page === 'marche') {
                 (SELECT COUNT(*) FROM information_schema.COLUMNS
                  WHERE TABLE_SCHEMA = DATABASE()
                    AND ((TABLE_NAME = 'markets' AND COLUMN_NAME = 'official_result_qualification_id')
-                     OR (TABLE_NAME = 'market_transitions' AND COLUMN_NAME = 'qualification_id'))) AS column_count"
+                     OR (TABLE_NAME = 'market_transitions' AND COLUMN_NAME = 'qualification_id'))) AS column_count,
+                (SELECT COUNT(*) FROM information_schema.TABLE_CONSTRAINTS
+                 WHERE CONSTRAINT_SCHEMA = DATABASE()
+                   AND CONSTRAINT_NAME IN ('fk_market_transitions_qualification_market',
+                                            'fk_markets_official_result_qualification_market')) AS constraint_count,
+                (SELECT COUNT(*) FROM permissions
+                 WHERE code IN ('markets.lifecycle.advance', 'markets.results.qualify',
+                                'markets.results.validate', 'markets.lifecycle.reopen')) AS permission_count"
         );
         $schemaState = $check->fetch();
         $schemaReady = (int) ($schemaState['table_count'] ?? 0) === 2
-            && (int) ($schemaState['column_count'] ?? 0) === 2;
+            && (int) ($schemaState['column_count'] ?? 0) === 2
+            && (int) ($schemaState['constraint_count'] ?? 0) === 2
+            && (int) ($schemaState['permission_count'] ?? 0) === 4;
 
         if ($isPost) {
             if (!$auth->verifyCsrf($_POST['csrf_token'] ?? null)) {
