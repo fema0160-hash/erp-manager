@@ -208,6 +208,16 @@ Fichier : database/migrations/011_market_execution_retention_closure.sql.
 - Correction : ajout de `proof_document_id` dans `006_market_core_details.sql`, puis création de l'index et de la FK composite vers `stored_documents(id, market_id, company_id)` dans `007_market_documents_checklist.sql`, après création de `stored_documents`.
 - MLD harmonisé avec les contraintes réelles de remplacement des cautions et clarification des instantanés TTC.
 
+### Adaptation applicative aux lots
+
+- `app/MarketLifecycle.php` : ajout de la détection du schéma 005, de la lecture/création des lots, de la création automatique du lot n° 1 pour les nouveaux marchés, et des méthodes de progression, qualification, validation et réouverture verrouillées par lot.
+- `public/index.php` : sélection du lot actif et routage vers les méthodes lot lorsque le schéma 005 est détecté ; le parcours historique au niveau marché est conservé lorsque 005 est absent.
+- `resources/views/market-detail.php` : navigation entre lots, ajout d'un lot, affichage du cycle, des qualifications et de l'historique du lot sélectionné.
+- `resources/views/markets.php` : état synthétique « Plusieurs lots » et « Phases indépendantes » lorsque plusieurs lots existent.
+- Plan de test détaillé : `docs/TESTS_FONCTIONNELS_LOTS_V1.md`.
+
+Cette adaptation est une première version de code ; elle n'a pas encore été validée par PHP CLI, par le navigateur ni par un import MariaDB 10.4.32. Elle ne rend donc pas la migration 005 installable à ce stade.
+
 ### Réserves techniques et métier à lever
 
 1. **Base TTC de la retenue — BLOQUANT FONCTIONNEL :** `markets.awarded_amount` puis `market_lots.awarded_amount` ne portent pas un suffixe HT/TTC. Le MLD exige que la base soit le montant TTC initial attribué. Le service d'attribution doit donc garantir et documenter que cette valeur est TTC avant de remplir `market_award_details.retention_base_amount_ttc` et `retention_cap_amount_ttc`. Ne jamais déduire le TTC d'un montant ambigu.
@@ -218,7 +228,7 @@ Fichier : database/migrations/011_market_execution_retention_closure.sql.
 6. **Migration 006 :** vérifier avant installation que le compte `gest` attendu existe, que les sociétés concernées sont bien celles voulues, et que le nombre de paramètres insérés est exactement deux par société.
 7. **Migrations 005 à 011 :** MariaDB exécute certains DDL avec commits implicites. Un essai d'installation complet sur une copie restaurable et une procédure de reprise par instruction sont obligatoires.
 
-**Statut de cette passe :** audit statique renforcé ; incohérence MLD/SQL du justificatif de dépôt corrigée et traçabilité du validateur des situations ajoutée. Les migrations 005 à 011 restent des BROUILLONS NON EXÉCUTÉS ; aucune autorisation d'installation n'est donnée par cet audit.
+**Statut de cette passe :** audit statique renforcé ; incohérence MLD/SQL du justificatif de dépôt corrigée, traçabilité du validateur des situations ajoutée et première adaptation applicative aux lots enregistrée. Tests d'exécution toujours en attente. Les migrations 005 à 011 restent des BROUILLONS NON EXÉCUTÉS ; aucune autorisation d'installation n'est donnée par cet audit.
 
 ## 8. Ordre de déploiement proposé
 
