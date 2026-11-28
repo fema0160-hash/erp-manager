@@ -140,6 +140,7 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
           <?php if ($q['winner_amount'] !== null): ?><p>Montant concurrent : <strong><?= number_format((float) $q['winner_amount'], 2, ',', ' ') ?> MAD</strong></p><?php endif; ?>
           <?php if ($q['decision_reason']): ?><p class="sm:col-span-2">Motif : <?= $h($q['decision_reason']) ?></p><?php endif; ?>
           <?php if ($q['decision_observations']): ?><p class="sm:col-span-2">Observations : <?= $h($q['decision_observations']) ?></p><?php endif; ?>
+          <?php if (!empty($q['validated_by_name'])): ?><p class="sm:col-span-2 text-xs text-slate-500"><?= $q['validation_decision'] === 'validee' ? 'Validé' : 'Refusé' ?> par <?= $h($q['validated_by_name']) ?><?php if (!empty($q['validated_at'])): ?> · <?= $h(date('d/m/Y H:i', strtotime((string) $q['validated_at']))) ?><?php endif; ?></p><?php endif; ?>
           <?php if ($q['validation_reason']): ?><p class="sm:col-span-2 text-red-700">Motif du refus : <?= $h($q['validation_reason']) ?></p><?php endif; ?>
         </div>
         <?php if (empty($q['validation_decision']) && $canValidate && $phase === 5 && in_array($status, ['en_cours', 'a_qualifier'], true)): ?>
