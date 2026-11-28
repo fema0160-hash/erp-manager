@@ -8,7 +8,7 @@ $status = (string) ($market['lifecycle_status'] ?? '');
 $userId = (int) ($currentUser['id'] ?? 0);
 $role = (string) ($currentUser['role'] ?? '');
 $companyId = (int) ($market['company_id'] ?? 0);
-$canAdvance = $schemaReady && $auth->hasPermission($userId, $role, $companyId, 'markets.lifecycle.advance');
+$canAdvance = $auth->hasPermission($userId, $role, $companyId, 'markets.lifecycle.advance') && ($schemaReady || $phase <= 4);
 $canQualify = $schemaReady && $auth->hasPermission($userId, $role, $companyId, 'markets.results.qualify');
 $canValidate = $schemaReady && $auth->hasPermission($userId, $role, $companyId, 'markets.results.validate');
 $canReopen = $schemaReady && $role === 'GEST' && $auth->hasPermission($userId, $role, $companyId, 'markets.lifecycle.reopen');
@@ -56,7 +56,7 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
     <strong>Migration 004 requise.</strong>
     La fiche est consultable, mais les transitions, qualifications, validations et l'historique détaillé ne sont pas activés. Installez d'abord la migration 004 après sauvegarde et autorisation explicite.
   </section>
-<?php else: ?>
+<?php endif; ?>
 
 <?php if ($phase >= 1 && $phase <= 4 && $canAdvance && $status === 'en_cours'): ?>
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
@@ -93,6 +93,7 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
   </section>
 <?php endif; ?>
 
+<?php if ($schemaReady): ?>
 <?php if ($canSubmitQualification): ?>
   <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
     <h3 class="font-bold text-slate-900">Qualifier le résultat</h3>
@@ -166,6 +167,8 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
   </section>
 <?php endif; ?>
 
+<?php endif; ?>
+
 <section class="rounded-2xl bg-white border border-slate-200 p-5 shadow-sm">
   <div class="flex items-center justify-between gap-2"><h3 class="font-bold text-slate-900">Historique complet</h3><span class="text-xs text-slate-500"><?= count($history) ?> événement(s)</span></div>
   <?php if (!$history): ?>
@@ -181,7 +184,7 @@ $hTitle = (string) ($market['reference'] ?? 'Marché');
     </table></div>
   <?php endif; ?>
 </section>
-<?php endif; ?>
+</div>
 
 <script>
 (() => {
