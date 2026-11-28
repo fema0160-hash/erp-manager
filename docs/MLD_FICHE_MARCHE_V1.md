@@ -43,7 +43,7 @@ Référence : erp-manager/docs/MLD_FICHE_MARCHE_V1.md
 | `market_result_qualifications` | `id BIGINT UNSIGNED` | Résultats proposés, rattachés à un lot par migration additive 005 |
 | `market_result_validations` | `id BIGINT UNSIGNED` | Validation/refus des résultats |
 
-Les tables `market_result_qualifications` et `market_result_validations` de la migration 004 restent l'unique mécanisme de qualification et de validation. Ne pas créer de tables de résultat concurrentes.
+Les tables `market_result_qualifications` et `market_result_validations` de la migration 004 restent l'unique mécanisme de qualification et de validation. La migration additive 005 ajoute `lot_id` et `company_id` à `market_result_qualifications`, puis rattache chaque qualification à un lot. Ne pas créer de tables de résultat concurrentes. `market_transitions` reçoit également `lot_id` et `company_id`.
 
 ### 2.2 Évolutions additives de `markets`
 
@@ -282,6 +282,8 @@ Clés initiales proposées :
 - `market_number_padding` : longueur du compteur.
 
 Les paramètres fortement structurés (modèles, lignes documentaires et règles d'alerte) restent dans leurs propres tables et ne sont pas encodés dans une valeur JSON.
+
+Les paramètres initiaux par société sont `retention_rate_percent = 10.00` et `retention_cap_percent = 7.00`. Ces valeurs sont des valeurs par défaut modifiables, pas des constantes codées en dur. À la création de l'attribution du lot, le service copie les deux taux et calcule le plafond TTC ; toute modification future des paramètres ne modifie pas cet instantané.
 
 ### 6.2 `market_setting_history`
 
@@ -558,7 +560,7 @@ KEY `(market_id, event_date)`, FK composites vers marché et document. CHECK ava
 
 ### 10.2 `market_work_situations`
 
-Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT NULL` et une FK composite vers `market_lots`. Les montants HT, TVA et TTC sont enregistrés ; le TTC validé constitue la base du prélèvement de retenue.
+Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT NULL` et une FK composite vers `market_lots`. Ajouter UNIQUE `(id, lot_id, market_id, company_id)` pour permettre la référence sûre depuis les événements de retenue. Les montants HT, TVA et TTC sont enregistrés ; le TTC validé constitue la base du prélèvement de retenue.
 
 | Colonne | Type | Null | Description |
 |---|---|---:|---|
@@ -580,7 +582,30 @@ Chaque situation est rattachée à un lot. Ajouter `lot_id BIGINT UNSIGNED NOT N
 
 UNIQUE `(market_id, situation_number)`, KEY `(market_id, period_start, period_end)`, FK composites vers marché et document.
 
-### 10.3 `market_amendments`
+### 10.3 `market_retention_events`
+
+Historique append-only d'un prélèvement de retenue calculé sur une situation validée.
+
+| Colonne | Type | Null | Description |
+|---|---|---:|---|
+| `id` | BIGINT UNSIGNED PK AI | Non | Identifiant |
+| `market_id` | INT UNSIGNED | Non | Marché |
+| `company_id` | INT UNSIGNED | Non | Société |
+| `lot_id` | BIGINT UNSIGNED | Non | Lot |
+| `work_situation_id` | BIGINT UNSIGNED | Non | Situation validée |
+| `situation_amount_ttc` | DECIMAL(15,2) | Non | TTC validé de la situation |
+| `retention_rate_percent_snapshot` | DECIMAL(5,2) | Non | Taux appliqué, 10 % par défaut |
+| `calculated_amount_ttc` | DECIMAL(15,2) | Non | Retenue calculée avant plafonnement |
+| `cap_amount_ttc_snapshot` | DECIMAL(15,2) | Non | Plafond monétaire TTC figé pour le lot |
+| `cumulative_before_ttc` | DECIMAL(15,2) | Non | Cumul avant prélèvement |
+| `retained_amount_ttc` | DECIMAL(15,2) | Non | Montant réellement retenu après plafonnement |
+| `cumulative_after_ttc` | DECIMAL(15,2) | Non | Cumul après prélèvement |
+| `created_by` | INT UNSIGNED FK users | Non | Auteur / validateur déclencheur |
+| `created_at` | DATETIME | Non | Date du calcul |
+
+UNIQUE `(work_situation_id)` pour empêcher un double prélèvement sur la même situation ; UNIQUE `(id, lot_id, market_id, company_id)` ; FK composite vers la situation `(work_situation_id, lot_id, market_id, company_id)`. CHECK tous montants >= 0, `retained_amount_ttc <= calculated_amount_ttc` et `cumulative_after_ttc <= cap_amount_ttc_snapshot`. L'événement ne peut être ni modifié ni supprimé par l'application. Calcul : `retenue théorique = TTC situation × taux / 100`; `retenue réelle = MIN(retenue théorique, plafond TTC - cumul précédent)`. Si le solde du plafond est nul, aucun nouvel événement de prélèvement n'est créé.
+
+### 10.4 `market_amendments`
 
 Chaque avenant est rattaché au lot concerné via `lot_id` et une FK composite vers `market_lots`.
 
@@ -600,7 +625,7 @@ Chaque avenant est rattaché au lot concerné via `lot_id` et une FK composite v
 
 UNIQUE `(market_id, amendment_number)`, FK composites vers marché et document.
 
-### 10.4 `market_receptions`
+### 10.5 `market_receptions`
 
 Chaque réception est rattachée au lot concerné via `lot_id` et une FK composite vers `market_lots`.
 
@@ -619,7 +644,7 @@ Chaque réception est rattachée au lot concerné via `lot_id` et une FK composi
 
 KEY `(market_id, reception_type, reception_date)`, FK composites vers marché et document. Plusieurs réceptions peuvent être enregistrées ; la règle de cohérence provisoire/définitive est contrôlée par le service métier.
 
-### 10.5 `market_closures`
+### 10.6 `market_closures`
 
 La clôture est gérée par lot. Ajouter `lot_id` et porter l'unicité de clôture sur ce lot.
 
@@ -646,7 +671,7 @@ UNIQUE `(market_id)`, FK composite vers marché. CHECK montants >= 0. Les réser
 |---|---|
 | Organismes et données générales | `market_organizations`, `market_details` |
 | Étude, dépôt et attribution | `market_studies`, `market_submissions`, `market_award_details` |
-| Cautions | `market_guarantees` |
+| Cautions et retenues | `market_guarantees`, `market_retention_events` |
 | Paramètres et numérotation | `market_settings`, `market_setting_history`, `market_number_sequences` |
 | Modèle documentaire | `market_document_templates`, `market_document_template_items` |
 | Documents et checklist | `stored_documents`, `market_document_checklist_items`, `market_document_checklist_events` |
@@ -655,7 +680,7 @@ UNIQUE `(market_id)`, FK composite vers marché. CHECK montants >= 0. Les réser
 | Renouvellements et alertes | `market_contract_periods`, `market_alert_rules`, `market_alerts` |
 | Exécution et clôture | `market_execution_events`, `market_work_situations`, `market_amendments`, `market_receptions`, `market_closures` |
 
-Total proposé : 26 nouvelles tables métier (les 25 tables précédemment listées, plus `market_lots`) et les colonnes additives nécessaires à la compatibilité, aux lots et aux instantanés de calcul. Le nombre exact de colonnes sera arrêté dans les migrations.
+Total proposé : 27 nouvelles tables métier (les 25 tables précédemment listées, plus `market_lots` et `market_retention_events`) et les colonnes additives nécessaires à la compatibilité, aux lots et aux instantanés de calcul. Le nombre exact de colonnes sera arrêté dans les migrations.
 
 ## 12. Ordre de création recommandé des futures migrations
 
@@ -686,7 +711,7 @@ Les clés étrangères vers `stored_documents` doivent être ajoutées après la
 - Les événements de checklist sont append-only.
 - Le taux de prélèvement (10 % par défaut) et le plafond cumulé (7 % par défaut) sont configurables par société puis figés par lot.
 - Chaque situation validée prélève 10 % de son montant TTC, dans la limite du solde disponible avant le plafond de 7 % du montant TTC initial attribué au lot.
-- Les événements de retenue sont append-only ; le cumul ne peut pas dépasser le plafond.
+- Les événements de retenue sont append-only ; le cumul ne peut pas dépasser le plafond et une situation ne peut déclencher qu'un seul prélèvement.
 - Les changements de paramètres ne recalculent pas l'historique.
 - Les périodes de contrat ne se chevauchent pas sans dérogation explicite.
 - Les alertes ont une clé anti-doublon.
@@ -698,7 +723,7 @@ Les clés étrangères vers `stored_documents` doivent être ajoutées après la
 
 Décisions confirmées :
 1. Lot unique créé automatiquement par défaut ; lots supplémentaires indépendants possibles.
-2. Résultats, validations, phases, BPU, cautions, périodes contractuelles et suivi d'exécution indépendants par lot.
+2. Résultats, validations, phases, BPU, cautions, périodes contractuelles, retenues et suivi d'exécution indépendants par lot.
 3. BPU calculé HT, TVA et TTC par ligne ; taux TVA conservé sur chaque ligne et montants calculés côté serveur.
 4. Retenue : 10 % du TTC de chaque situation validée, plafonnée à 7 % du montant TTC initial attribué au lot ; dernier prélèvement limité au solde du plafond.
 5. Taux et plafond modifiables dans les paramètres propres à chaque société ; instantanés historiques conservés.
