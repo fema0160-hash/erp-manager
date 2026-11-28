@@ -52,7 +52,7 @@ Le projet ne dispose pas encore d'un module complet de pièces et de checklist d
 
 ## 4. Prérequis de base de données
 
-La fiche détaillée reste consultable après la migration 003. Les nouvelles actions et l'historique détaillé exigent la migration 004.
+La fiche détaillée et les transitions 1→5 restent disponibles après la migration 003. Les qualifications, validations, l'historique lié aux résultats et les phases 6→8 exigent la migration 004.
 
 La migration 004 n'a pas été exécutée. Aucune base de données n'a été modifiée pendant cette étape. Ne pas activer le workflow avant son installation contrôlée sur une copie de sauvegarde.
 
