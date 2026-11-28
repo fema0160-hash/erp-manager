@@ -76,6 +76,7 @@ CREATE TABLE market_work_situations (
     situation_status VARCHAR(20) NOT NULL DEFAULT 'brouillon',
     submitted_at DATETIME NULL,
     approved_at DATETIME NULL,
+    approved_by INT UNSIGNED NULL,
     document_id BIGINT UNSIGNED NULL,
     created_by INT UNSIGNED NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -87,6 +88,7 @@ CREATE TABLE market_work_situations (
     KEY idx_market_work_situations_company_status (company_id, situation_status, approved_at),
     KEY idx_market_work_situations_document (document_id, market_id, company_id),
     KEY idx_market_work_situations_created_by (created_by),
+    KEY idx_market_work_situations_approved_by (approved_by),
     CONSTRAINT fk_market_work_situations_lot
         FOREIGN KEY (lot_id, market_id, company_id)
         REFERENCES market_lots(id, market_id, company_id)
@@ -98,14 +100,21 @@ CREATE TABLE market_work_situations (
     CONSTRAINT fk_market_work_situations_user
         FOREIGN KEY (created_by) REFERENCES users(id)
         ON UPDATE CASCADE ON DELETE RESTRICT,
+    CONSTRAINT fk_market_work_situations_approved_by
+        FOREIGN KEY (approved_by) REFERENCES users(id)
+        ON UPDATE CASCADE ON DELETE RESTRICT,
     CONSTRAINT chk_market_work_situations_period
         CHECK (period_end >= period_start),
     CONSTRAINT chk_market_work_situations_amounts
         CHECK (amount_ht >= 0 AND amount_vat >= 0 AND amount_ttc >= 0),
     CONSTRAINT chk_market_work_situations_status
         CHECK (situation_status IN ('brouillon', 'soumise', 'validee', 'payee', 'rejetee')),
+    CONSTRAINT chk_market_work_situations_approval_pair
+        CHECK ((approved_at IS NULL AND approved_by IS NULL)
+            OR (approved_at IS NOT NULL AND approved_by IS NOT NULL)),
     CONSTRAINT chk_market_work_situations_approved
-        CHECK (situation_status NOT IN ('validee', 'payee') OR approved_at IS NOT NULL)
+        CHECK (situation_status NOT IN ('validee', 'payee')
+            OR (approved_at IS NOT NULL AND approved_by IS NOT NULL))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- 3. Événements de retenue TTC. Une seule ligne au maximum par situation.
