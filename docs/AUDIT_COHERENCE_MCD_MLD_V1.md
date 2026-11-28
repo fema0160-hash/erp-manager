@@ -211,13 +211,13 @@ Fichier : database/migrations/011_market_execution_retention_closure.sql.
 
 1. **Base TTC de la retenue — BLOQUANT FONCTIONNEL :** `markets.awarded_amount` puis `market_lots.awarded_amount` ne portent pas un suffixe HT/TTC. Le MLD exige que la base soit le montant TTC initial attribué. Le service d'attribution doit donc garantir et documenter que cette valeur est TTC avant de remplir `market_award_details.retention_base_amount_ttc` et `retention_cap_amount_ttc`. Ne jamais déduire le TTC d'un montant ambigu.
 2. **Initialisation GEST en 006 :** les deux INSERT de paramètres ne produisent aucune ligne si le compte `gest` est absent ; le commentaire du script disait à tort que le contrôle échouerait automatiquement. Le précontrôle doit explicitement vérifier qu'un seul compte GEST existe avant l'exécution, puis vérifier le nombre de paramètres créés par société.
-3. **Validation des situations :** `market_work_situations` conserve `approved_at`, mais pas l'identifiant de l'utilisateur ayant validé la situation. Le service devra au minimum historiser l'approbateur dans l'audit applicatif ; une colonne `approved_by` avec FK utilisateur est recommandée avant mise en production.
+3. **Validation des situations :** correction intégrée à la migration 011 : ajout de `approved_by`, FK vers `users`, index dédié et contraintes imposant la cohérence entre `approved_at` et `approved_by`, ainsi que leur présence pour les situations validées/payées. Le service doit renseigner ces deux champs dans la même transaction que le changement de statut.
 4. **Règles non imposables par les contraintes actuelles :** une seule période initiale et l'absence de chevauchement, une seule version BPU finale, absence de cycles de remplacement de caution, cohérence HT + TVA = TTC, immutabilité des BPU finalisés et calcul cumulatif de retenue exigent les services transactionnels décrits dans les scripts.
 5. **Migration 007 et triggers :** l'import devra être effectué par un outil qui gère correctement les blocs `DELIMITER`. Tester explicitement création, déclenchement, permissions et comportement des triggers sur MariaDB 10.4.32.
 6. **Migration 006 :** vérifier avant installation que le compte `gest` attendu existe, que les sociétés concernées sont bien celles voulues, et que le nombre de paramètres insérés est exactement deux par société.
 7. **Migrations 005 à 011 :** MariaDB exécute certains DDL avec commits implicites. Un essai d'installation complet sur une copie restaurable et une procédure de reprise par instruction sont obligatoires.
 
-**Statut de cette passe :** audit statique renforcé et une incohérence MLD/SQL corrigée. Les migrations 005 à 011 restent des BROUILLONS NON EXÉCUTÉS ; aucune autorisation d'installation n'est donnée par cet audit.
+**Statut de cette passe :** audit statique renforcé ; incohérence MLD/SQL du justificatif de dépôt corrigée et traçabilité du validateur des situations ajoutée. Les migrations 005 à 011 restent des BROUILLONS NON EXÉCUTÉS ; aucune autorisation d'installation n'est donnée par cet audit.
 
 ## 8. Ordre de déploiement proposé
 
