@@ -50,9 +50,9 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
 
       <section class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         <div class="overflow-x-auto"><table class="w-full text-left text-sm">
-          <thead class="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-600"><tr><th class="p-3">N° Marché</th><th class="p-3 min-w-64">Objet</th><th class="p-3">Entreprise</th><th class="p-3">Phase</th><th class="p-3">Statut</th><th class="p-3 text-right">Montant (MAD)</th><th class="p-3">Date</th></tr></thead>
+          <thead class="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-600"><tr><th class="p-3">N° Marché</th><th class="p-3 min-w-64">Objet</th><th class="p-3">Entreprise</th><th class="p-3">Phase</th><th class="p-3">Statut</th><th class="p-3 text-right">Montant (MAD)</th><th class="p-3">Date</th><th class="p-3 text-center">Action</th></tr></thead>
           <tbody class="divide-y divide-slate-100">
-          <?php if (!$markets): ?><tr><td colspan="7" class="p-8 text-center text-slate-500">Aucun marché ne correspond à votre recherche.</td></tr><?php else: ?>
+          <?php if (!$markets): ?><tr><td colspan="8" class="p-8 text-center text-slate-500">Aucun marché ne correspond à votre recherche.</td></tr><?php else: ?>
             <?php foreach ($markets as $market): ?>
               <tr class="hover:bg-slate-50/80">
                 <td class="p-3 font-bold text-[#0f294a] whitespace-nowrap"><a href="?page=marche&id=<?= (int) $market['id'] ?>" class="hover:underline"><?= $h($market['reference']) ?></a><?php if ((int) $market['is_demo'] === 1): ?><span class="ml-1 text-[10px] font-semibold text-slate-400">Démo</span><?php endif; ?></td>
@@ -62,6 +62,7 @@ $totalAmount = array_sum(array_map(static fn (array $market): float => (float) $
                 <td class="p-3 whitespace-nowrap"><span class="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700"><?= $h($statusLabels[$market['status']] ?? $market['status']) ?></span></td>
                 <td class="p-3 text-right font-semibold whitespace-nowrap"><?= number_format((float) $market['amount'], 2, ',', ' ') ?></td>
                 <td class="p-3 whitespace-nowrap"><?= $h(date('d/m/Y', strtotime((string) $market['market_date']))) ?></td>
+                <td class="p-3 text-center whitespace-nowrap"><a href="?page=marche&id=<?= (int) $market['id'] ?>" class="inline-flex items-center rounded-lg bg-[#0f294a] px-3 py-2 text-xs font-bold text-white hover:bg-[#163a68] focus:outline-none focus:ring-2 focus:ring-[#ea9a10]">Ouvrir la fiche</a></td>
               </tr>
             <?php endforeach; ?>
           <?php endif; ?>
