@@ -134,6 +134,7 @@ Un marché possède au moins un lot. Le lot n° 1 est créé automatiquement lor
 | `lifecycle_status` | VARCHAR(20) | Non | Statut indépendant du lot |
 | `lifecycle_phase` | TINYINT UNSIGNED | Non | Phase indépendante 1 à 8 |
 | `awarded_amount` | DECIMAL(15,2) | Oui | Montant TTC attribué au lot, alimenté après validation |
+| `official_result_qualification_id` | BIGINT UNSIGNED | Oui | Qualification validée constituant le résultat officiel du lot |
 | `created_at` | DATETIME | Non | Création |
 | `updated_at` | DATETIME | Non | Modification |
 
