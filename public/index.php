@@ -241,6 +241,99 @@ if ($page === 'mon_mot_de_passe') {
 }
 
 
+if ($page === 'marche') {
+    $currentUser = $auth->requireLogin();
+    $marketId = (int) ($_GET['id'] ?? $_POST['market_id'] ?? 0);
+    $market = null;
+    $qualifications = [];
+    $history = [];
+    $successMessage = isset($_GET['success']) ? 'Opération enregistrée avec succès.' : '';
+    $errorMessage = '';
+    $schemaReady = false;
+
+    try {
+        $market = MarketLifecycle::findMarket($pdo, $marketId);
+        if (!$market) {
+            http_response_code(404);
+            echo 'Marché introuvable.';
+            exit;
+        }
+        $companyId = (int) $market['company_id'];
+        $userId = (int) $currentUser['id'];
+        $role = (string) $currentUser['role'];
+
+        if (!$auth->hasCompanyAccess($userId, $role, $companyId)
+            || !$auth->hasPermission($userId, $role, $companyId, 'markets.view')) {
+            http_response_code(403);
+            echo 'Accès refusé à ce marché.';
+            exit;
+        }
+
+        $check = $pdo->query(
+            "SELECT COUNT(*) FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME IN ('market_result_qualifications', 'market_result_validations')"
+        );
+        $schemaReady = (int) $check->fetchColumn() === 2;
+
+        if ($isPost) {
+            if (!$auth->verifyCsrf($_POST['csrf_token'] ?? null)) {
+                throw new RuntimeException('Votre session a expiré. Rechargez la page et réessayez.');
+            }
+            if (!$schemaReady) {
+                throw new RuntimeException('La migration 004 doit être installée avant d’utiliser les transitions, qualifications et validations.');
+            }
+
+            $action = (string) ($_POST['action'] ?? '');
+            $permission = match ($action) {
+                'advance' => 'markets.lifecycle.advance',
+                'qualify' => 'markets.results.qualify',
+                'validate' => 'markets.results.validate',
+                'reopen' => 'markets.lifecycle.reopen',
+                default => '',
+            };
+            if ($permission === '' || !$auth->hasPermission($userId, $role, $companyId, $permission)) {
+                http_response_code(403);
+                throw new DomainException('Vous ne disposez pas du droit nécessaire pour cette action.');
+            }
+
+            if ($action === 'advance') {
+                MarketLifecycle::advancePhase(
+                    $pdo, $marketId, $userId,
+                    (string) ($_POST['reason'] ?? ''),
+                    isset($_POST['closure_confirmed']) && $_POST['closure_confirmed'] === '1'
+                );
+            } elseif ($action === 'qualify') {
+                MarketLifecycle::qualifyResult($pdo, $marketId, $userId, $_POST);
+            } elseif ($action === 'validate') {
+                MarketLifecycle::validateResult(
+                    $pdo, $marketId, (int) ($_POST['qualification_id'] ?? 0), $userId,
+                    (string) ($_POST['decision'] ?? ''), (string) ($_POST['validation_reason'] ?? '')
+                );
+            } elseif ($action === 'reopen') {
+                MarketLifecycle::reopen($pdo, $marketId, $userId, $role, (string) ($_POST['reason'] ?? ''));
+            }
+            header('Location: ?page=marche&id=' . $marketId . '&success=1');
+            exit;
+        }
+
+        if ($schemaReady) {
+            $qualifications = MarketLifecycle::qualifications($pdo, $marketId);
+            $history = MarketLifecycle::history($pdo, $marketId);
+        }
+    } catch (InvalidArgumentException | DomainException | RuntimeException $exception) {
+        $errorMessage = $exception->getMessage();
+    } catch (PDOException $exception) {
+        error_log('ERP Manager - fiche marché : ' . $exception->getMessage());
+        $errorMessage = 'Impossible de charger ou de traiter cette fiche. Vérifiez que les migrations requises sont installées.';
+    }
+
+    $pageTitle = 'Fiche du marché';
+    $csrfToken = $auth->csrfToken();
+    require dirname(__DIR__) . '/resources/views/market-detail.php';
+    exit;
+}
+
 if ($page === 'marches' || $page === 'marche_nouveau') {
     $currentUser = $auth->requireLogin();
     $pageTitle = $page === 'marche_nouveau' ? 'Nouveau marché' : 'Gestion des marchés';
