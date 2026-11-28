@@ -223,6 +223,8 @@ CREATE TABLE market_submissions (
     company_id INT UNSIGNED NOT NULL,
     deposited_by INT UNSIGNED NULL,
     deposited_at DATETIME NULL,
+    proof_document_id BIGINT UNSIGNED NULL
+        COMMENT 'Preuve de dépôt, FK ajoutée après création de stored_documents',
     observations TEXT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
