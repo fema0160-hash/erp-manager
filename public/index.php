@@ -321,11 +321,11 @@ if ($page === 'marche') {
             $qualifications = MarketLifecycle::qualifications($pdo, $marketId);
             $history = MarketLifecycle::history($pdo, $marketId);
         }
-    } catch (InvalidArgumentException | DomainException | RuntimeException $exception) {
-        $errorMessage = $exception->getMessage();
     } catch (PDOException $exception) {
         error_log('ERP Manager - fiche marché : ' . $exception->getMessage());
         $errorMessage = 'Impossible de charger ou de traiter cette fiche. Vérifiez que les migrations requises sont installées.';
+    } catch (InvalidArgumentException | DomainException | RuntimeException $exception) {
+        $errorMessage = $exception->getMessage();
     }
 
     $pageTitle = 'Fiche du marché';
